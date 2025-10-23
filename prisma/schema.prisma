@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Model {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  slug           String          @unique
+  description    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  imageArtifacts ImageArtifact[]
+
+  @@index([createdAt])
+}
+
+model Dataset {
+  id             String          @id @default(uuid())
+  name           String          @unique
+  slug           String          @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  imageArtifacts ImageArtifact[]
+
+  @@index([createdAt])
+}
+
+model ImageArtifact {
+  id         String   @id @default(uuid())
+  modelId    String
+  datasetId  String
+  filename   String
+  prompt     String?
+  promptHash String?
+  sourceUrl  String
+  thumbnailUrl String?
+  width        Int?
+  height       Int?
+  metadata     Json?
+  capturedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  model   Model   @relation(fields: [modelId], references: [id])
+  dataset Dataset @relation(fields: [datasetId], references: [id])
+
+  @@unique([modelId, datasetId, filename], name: "modelId_datasetId_filename")
+  @@index([modelId, datasetId])
+  @@index([datasetId, createdAt])
+  @@index([promptHash])
+}
+
+model ViewKV {
+  context   String
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([context, key])
+}

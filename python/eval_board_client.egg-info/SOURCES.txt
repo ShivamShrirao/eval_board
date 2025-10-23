@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+eval_board_client/__init__.py
+eval_board_client/__main__.py
+eval_board_client/cli.py
+eval_board_client/client.py
+eval_board_client/s3_manifest.py
+eval_board_client.egg-info/PKG-INFO
+eval_board_client.egg-info/SOURCES.txt
+eval_board_client.egg-info/dependency_links.txt
+eval_board_client.egg-info/entry_points.txt
+eval_board_client.egg-info/requires.txt
+eval_board_client.egg-info/top_level.txt
+examples/ingest_basic.py
