@@ -18,6 +18,7 @@ import argparse
 import os
 from dataclasses import dataclass
 from typing import Dict, Iterable, Iterator, List
+from urllib.parse import quote
 
 import boto3
 from botocore.config import Config
@@ -98,10 +99,12 @@ def discover_images(s3, model_name: str, prefix: str, limit: int | None) -> List
         if limit is not None and index >= limit:
             break
         source = f"s3://{bucket}/{obj['key']}"
+        encoded_key = quote(obj["key"], safe="/")
+        resolved_url = f"https://{bucket}.s3.amazonaws.com/{encoded_key}"
         images.append(
             ImageSpec(
                 filename=obj["filename"],
-                source_url=source,
+                source_url=resolved_url,
                 metadata={"model": model_name, "s3_key": obj["key"]},
             )
         )

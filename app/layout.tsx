@@ -10,7 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <div className="mx-auto w-full max-w-7xl px-6 py-8">{children}</div>
+        {children}
       </body>
     </html>
   );
