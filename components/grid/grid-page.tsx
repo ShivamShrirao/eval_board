@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useViewContext } from "../view-context";
 import { useModels } from "../../lib/hooks/useModels";
 import { useDatasets } from "../../lib/hooks/useDatasets";
 import { useGridData } from "../../lib/hooks/useGridData";
 import { SearchableDropdown } from "../ui/searchable-dropdown";
-import { ImageViewer } from "./image-viewer";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
@@ -44,8 +43,6 @@ export function GridPage() {
     addColumn(null);
   };
 
-  const [viewerState, setViewerState] = useState<{ rowIndex: number; columnIndex: number } | null>(null);
-
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual handles internal memoization.
   const rowVirtualizer = useVirtualizer({
@@ -54,62 +51,6 @@ export function GridPage() {
     estimateSize: () => 260,
     overscan: 8
   });
-
-  useEffect(() => {
-    if (!viewerState) return;
-    const row = rows[viewerState.rowIndex];
-    if (!row || !row.cells[viewerState.columnIndex]?.artifact) {
-      setViewerState(null);
-    }
-  }, [rows, viewerState]);
-
-  const openCell = useCallback(
-    (rowIndex: number, columnIndex: number) => {
-      const row = rows[rowIndex];
-      const artifact = row?.cells[columnIndex]?.artifact;
-      if (!artifact) return;
-      setViewerState({ rowIndex, columnIndex });
-    },
-    [rows]
-  );
-
-  const navigateViewer = useCallback(
-    (direction: "left" | "right" | "up" | "down") => {
-      if (!viewerState) return;
-      const { rowIndex, columnIndex } = viewerState;
-      const columnCount = config.columns.length;
-
-      const attempt = (nextRow: number, nextCol: number) => {
-        if (nextRow < 0 || nextRow >= rows.length) return false;
-        if (nextCol < 0 || nextCol >= columnCount) return false;
-        const cell = rows[nextRow].cells[nextCol];
-        if (cell?.artifact) {
-          setViewerState({ rowIndex: nextRow, columnIndex: nextCol });
-          return true;
-        }
-        return false;
-      };
-
-      if (direction === "left" || direction === "right") {
-        const delta = direction === "left" ? -1 : 1;
-        for (let col = columnIndex + delta; col >= 0 && col < columnCount; col += delta) {
-          if (attempt(rowIndex, col)) return;
-        }
-      }
-
-      if (direction === "up" || direction === "down") {
-        const delta = direction === "up" ? -1 : 1;
-        for (let row = rowIndex + delta; row >= 0 && row < rows.length; row += delta) {
-          if (attempt(row, columnIndex)) return;
-        }
-      }
-    },
-    [config.columns.length, rows, viewerState]
-  );
-
-  const selectedArtifact = viewerState
-    ? rows[viewerState.rowIndex]?.cells[viewerState.columnIndex]?.artifact ?? null
-    : null;
 
   const renderRow = (index: number) => {
     const row = rows[index];
@@ -121,7 +62,7 @@ export function GridPage() {
       <div className="border-b border-slate-900/60">
         <div className="grid gap-4 px-4 py-3" style={{ gridTemplateColumns: templateColumns }}>
           {row.cells.map((cell, columnIndex) => (
-            <GridCell key={`${row.key}-${columnIndex}`} artifact={cell.artifact} onOpen={() => openCell(index, columnIndex)} />
+            <GridCell key={`${row.key}-${columnIndex}`} artifact={cell.artifact} />
           ))}
         </div>
       </div>
@@ -271,28 +212,18 @@ export function GridPage() {
         )}
       </div>
 
-      <ImageViewer
-        open={Boolean(viewerState)}
-        artifact={selectedArtifact}
-        onOpenChange={(open) => {
-          if (!open) setViewerState(null);
-        }}
-        onNavigate={navigateViewer}
-      />
     </section>
   );
 }
 
 interface GridCellProps {
   artifact: ImageArtifactDTO | null;
-  onOpen: () => void;
 }
 
-function GridCell({ artifact, onOpen }: GridCellProps) {
+function GridCell({ artifact }: GridCellProps) {
   return artifact ? (
     <button
       type="button"
-      onClick={onOpen}
       className="group flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left transition hover:border-slate-600"
     >
       <div className="flex h-full items-center justify-center overflow-hidden rounded-lg bg-slate-950">

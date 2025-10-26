@@ -1,24 +1,7 @@
-#!/usr/bin/env python3
-"""Ingest Eval Board data by scanning S3 prefixes per model.
-
-Example usage:
-
-    python python/examples/ingest_basic.py \
-        --base-url http://localhost:3000 \
-        --dataset-name coco-validation \
-        --model "stable-diffusion-v4" s3://bucket/path/to/model_v4/ \
-        --model "stable-diffusion-v5" s3://bucket/path/to/model_v5/
-
-Requires AWS credentials (standard boto3 resolution).
-"""
-
 from __future__ import annotations
 
-import argparse
 import os
-from dataclasses import dataclass
-from typing import Dict, Iterable, Iterator, List
-from urllib.parse import quote
+from typing import Dict, Iterator, List
 
 import boto3
 from botocore.config import Config
@@ -29,40 +12,20 @@ from requests import HTTPError
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 
+# Configuration - modify these variables as needed
+BASE_URL = "http://localhost:3000"
+DATASET_NAME = "new_hands_prompts_v3"
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest Eval Board data from S3 prefixes.")
-    parser.add_argument("--base-url", default="http://localhost:3000", help="Eval Board base URL")
-    parser.add_argument("--dataset-name", required=True, help="Dataset name to associate with these images")
-    parser.add_argument(
-        "--dataset-slug",
-        help="Optional dataset slug; defaults to slugified dataset name"
-    )
-    parser.add_argument(
-        "--max-images",
-        type=int,
-        default=None,
-        help="Optional limit per model prefix"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print payload instead of POSTing"
-    )
-    parser.add_argument(
-        "--aws-region",
-        default=None,
-        help="Explicit AWS region for S3 client"
-    )
-    parser.add_argument(
-        "--model",
-        action="append",
-        nargs=2,
-        metavar=("MODEL_NAME", "S3_PREFIX"),
-        required=True,
-        help="Pair of model name and S3 prefix (may repeat)",
-    )
-    return parser.parse_args()
+# List of (model_name, s3_prefix) tuples
+MODELS = [
+    ("alchamist_checkpoint_1000", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_base/checkpoint_1000/"),
+    ("neg_prompt_simple_128_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_128_lora/checkpoint_000400/"),
+    ("neg_prompt_simple_256_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_256_lora/checkpoint_000400/"),
+    ("alchamist_checkpoint_neg_prompt_base", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_base/checkpoint_1000/"),
+    ("alchamist_checkpoint_no_neg_base", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_no_neg_base/checkpoint_1000/"),
+    ("neg_prompt_hand_only_128_lora_000200", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000200/"),
+    ("neg_prompt_hand_only_128_lora_000400", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000400/"),
+]
 
 
 def list_images_under_prefix(s3, bucket: str, prefix: str) -> Iterator[Dict[str, str]]:
@@ -90,15 +53,12 @@ def parse_s3_uri(uri: str) -> tuple[str, str]:
     return bucket, prefix
 
 
-def discover_images(s3, model_name: str, prefix: str, limit: int | None) -> List[ImageSpec]:
+def discover_images(s3, model_name: str, prefix: str) -> List[ImageSpec]:
     bucket, path = parse_s3_uri(prefix)
     items = list_images_under_prefix(s3, bucket, path)
 
     images: List[ImageSpec] = []
-    for index, obj in enumerate(items):
-        if limit is not None and index >= limit:
-            break
-        
+    for obj in items:
         # Generate signed URL with maximum expiration (7 days)
         signed_url = s3.generate_presigned_url(
             'get_object',
@@ -124,20 +84,12 @@ def discover_images(s3, model_name: str, prefix: str, limit: int | None) -> List
 
 
 def main() -> None:
-    args = parse_args()
-
-    session_config = {}
-    if args.aws_region:
-        session_config["region_name"] = args.aws_region
-
-    s3 = boto3.client("s3", config=Config(signature_version="s3v4"), **session_config)
-
-    dataset = DatasetDescriptor(name=args.dataset_name, slug=args.dataset_slug)
-
-    client = EvalBoardClient(base_url=args.base_url)
-    for model_name, prefix in args.model:
+    s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
+    dataset = DatasetDescriptor(name=DATASET_NAME)
+    client = EvalBoardClient(base_url=BASE_URL)
+    for model_name, prefix in MODELS:
         print(f"Discovering images for model '{model_name}' under {prefix}...")
-        images = discover_images(s3, model_name, prefix, args.max_images)
+        images = discover_images(s3, model_name, prefix)
         if not images:
             print(f"  No images found for {model_name} at {prefix}")
             continue
@@ -152,13 +104,9 @@ def main() -> None:
                 model=model_descriptor,
                 dataset=dataset,
                 images=images,
-                dry_run=args.dry_run,
+                dry_run=False,
             )
-            if args.dry_run:
-                print("Dry run payload preview:")
-                print(payload)
-            else:
-                print("Ingestion submitted successfully.")
+            print("Ingestion submitted successfully.")
         except HTTPError as exc:
             print(f"Ingestion failed for model '{model_name}': {exc.response.status_code} {exc.response.text}")
         except Exception as exc:
