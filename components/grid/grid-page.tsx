@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useViewContext } from "../view-context";
 import { useModels } from "../../lib/hooks/useModels";
 import { useDatasets } from "../../lib/hooks/useDatasets";
 import { useGridData } from "../../lib/hooks/useGridData";
 import { SearchableDropdown } from "../ui/searchable-dropdown";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
 
@@ -43,13 +43,34 @@ export function GridPage() {
     addColumn(null);
   };
 
-  const scrollParentRef = useRef<HTMLDivElement | null>(null);
-  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual handles internal memoization.
-  const rowVirtualizer = useVirtualizer({
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  const updateScrollMargin = () => {
+    if (!gridContainerRef.current) return;
+    const rect = gridContainerRef.current.getBoundingClientRect();
+    setScrollMargin(rect.top + window.scrollY);
+  };
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleResize = () => updateScrollMargin();
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    updateScrollMargin();
+  }, [config.columns.length, rows.length]);
+
+  const rowVirtualizer = useWindowVirtualizer({
     count: rows.length,
-    getScrollElement: () => scrollParentRef.current,
     estimateSize: () => 260,
-    overscan: 8
+    overscan: 8,
+    scrollMargin
   });
 
   const renderRow = (index: number) => {
@@ -60,7 +81,7 @@ export function GridPage() {
 
     return (
       <div className="border-b border-slate-900/60">
-        <div className="grid gap-4 px-4 py-3" style={{ gridTemplateColumns: templateColumns }}>
+        <div className="grid gap-4 py-3" style={{ gridTemplateColumns: templateColumns }}>
           {row.cells.map((cell, columnIndex) => (
             <GridCell key={`${row.key}-${columnIndex}`} artifact={cell.artifact} />
           ))}
@@ -80,7 +101,7 @@ export function GridPage() {
 
   return (
     <section className="flex h-full w-full flex-col gap-6">
-      <div className="rounded-2xl border border-slate-900 bg-black/70 p-5 shadow-lg shadow-black/40">
+      <div className="rounded-2xl border border-slate-900 bg-black/70 px-5 py-5 shadow-lg shadow-black/40">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <SearchableDropdown
@@ -172,7 +193,7 @@ export function GridPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-2xl border border-slate-900 bg-transparent">
+      <div ref={gridContainerRef} className="flex-1 rounded-2xl border border-slate-900 bg-transparent">
         {config.columns.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             Add at least one model column to start comparing outputs.
@@ -188,7 +209,7 @@ export function GridPage() {
             No images found for the current selection.
           </div>
         ) : (
-          <div ref={scrollParentRef} className="h-full w-full overflow-auto">
+          <div className="px-5">
             <div
               style={{
                 height: rowVirtualizer.getTotalSize(),
@@ -202,7 +223,7 @@ export function GridPage() {
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
                   className="absolute left-0 top-0 w-full"
-                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                  style={{ transform: `translateY(${virtualRow.start - scrollMargin}px)` }}
                 >
                   {renderRow(virtualRow.index)}
                 </div>
@@ -222,20 +243,17 @@ interface GridCellProps {
 
 function GridCell({ artifact }: GridCellProps) {
   return artifact ? (
-    <button
-      type="button"
-      className="group flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left transition hover:border-slate-600"
-    >
+    <div className="flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left">
       <div className="flex h-full items-center justify-center overflow-hidden rounded-lg bg-slate-950">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={artifact.sourceUrl}
           alt={artifact.prompt ?? artifact.filename}
           loading="lazy"
-          className="max-h-72 w-full object-contain transition group-hover:scale-[1.01]"
+          className="max-h-72 w-full object-contain"
         />
       </div>
-    </button>
+    </div>
   ) : (
     <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-black/60 p-3 text-xs text-slate-500">
       No image

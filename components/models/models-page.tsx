@@ -9,8 +9,46 @@ export function ModelsPage() {
   const [search, setSearch] = useState("");
   const { models, isLoading, refresh } = useModels(search);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
 
   const summaries = useMemo(() => models, [models]);
+
+  const handleRename = useCallback(
+    async (modelId: string, currentName: string) => {
+      const nextName = window.prompt("Rename model", currentName);
+      if (nextName === null) {
+        return;
+      }
+      const trimmed = nextName.trim();
+      if (!trimmed || trimmed === currentName) {
+        return;
+      }
+
+      try {
+        setRenamingId(modelId);
+        const res = await fetch(`/api/models/${modelId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ name: trimmed })
+        });
+
+        if (!res.ok) {
+          const message = await res.text();
+          throw new Error(message || "Failed to rename model");
+        }
+
+        await refresh();
+      } catch (error) {
+        console.error("Error renaming model", error);
+        window.alert("Failed to rename model. Check logs for details.");
+      } finally {
+        setRenamingId(null);
+      }
+    },
+    [refresh]
+  );
 
   const handleDelete = useCallback(
     async (modelId: string, modelName: string) => {
@@ -80,24 +118,38 @@ export function ModelsPage() {
               className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-slate-900 bg-black/70 p-5 text-left shadow-lg shadow-black/30 transition hover:border-slate-600 hover:bg-black/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-lg font-semibold text-slate-100">{model.name}</h3>
                   {model.description ? (
                     <p className="mt-1 text-sm text-slate-400">{model.description}</p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleDelete(model.id, model.name);
-                  }}
-                  disabled={deletingId === model.id}
-                  className="rounded-lg border border-red-900/50 bg-black/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-300 transition hover:border-red-500 hover:text-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {deletingId === model.id ? "Deleting…" : "Delete"}
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleRename(model.id, model.name);
+                    }}
+                    disabled={renamingId === model.id}
+                    className="rounded-lg border border-slate-700/70 bg-black/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition hover:border-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {renamingId === model.id ? "Renaming…" : "Rename"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleDelete(model.id, model.name);
+                    }}
+                    disabled={deletingId === model.id}
+                    className="rounded-lg border border-red-900/50 bg-black/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-300 transition hover:border-red-500 hover:text-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {deletingId === model.id ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs text-slate-400">
                 <div>

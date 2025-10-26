@@ -18,11 +18,11 @@ DATASET_NAME = "new_hands_prompts_v3"
 
 # List of (model_name, s3_prefix) tuples
 MODELS = [
-    ("alchamist_checkpoint_1000", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_base/checkpoint_1000/"),
+    ("alchamist_base_old_neg_prompt", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_base/checkpoint_1000/"),
     ("neg_prompt_simple_128_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_128_lora/checkpoint_000400/"),
     ("neg_prompt_simple_256_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_256_lora/checkpoint_000400/"),
-    ("alchamist_checkpoint_neg_prompt_base", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_base/checkpoint_1000/"),
-    ("alchamist_checkpoint_no_neg_base", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_no_neg_base/checkpoint_1000/"),
+    ("alchamist_base_hand_only_neg_prompt", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_base/checkpoint_1000/"),
+    ("alchamist_base_no_neg", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_no_neg_base/checkpoint_1000/"),
     ("neg_prompt_hand_only_128_lora_000200", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000200/"),
     ("neg_prompt_hand_only_128_lora_000400", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000400/"),
 ]

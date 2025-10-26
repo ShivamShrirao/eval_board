@@ -16,6 +16,20 @@ export class EntityNotFoundError extends Error {
   }
 }
 
+export class DuplicateNameError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DuplicateNameError";
+  }
+}
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+
 export async function listModels({
   search,
   take
@@ -192,6 +206,52 @@ export async function deleteDatasetById(id: string) {
       deletedArtifacts: deletedArtifacts.count
     };
   });
+}
+
+export async function updateModelName(id: string, name: string): Promise<ModelSummary> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Name is required");
+  }
+
+  try {
+    const updated = await prisma.model.update({
+      where: { id },
+      data: {
+        name: trimmed,
+        slug: slugify(trimmed)
+      },
+      include: {
+        imageArtifacts: {
+          select: {
+            datasetId: true
+          }
+        }
+      }
+    });
+
+    const datasetIds = new Set(updated.imageArtifacts.map((artifact) => artifact.datasetId));
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      slug: updated.slug,
+      description: updated.description,
+      createdAt: updated.createdAt.toISOString(),
+      datasetCount: datasetIds.size,
+      imageCount: updated.imageArtifacts.length
+    };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2025") {
+        throw new EntityNotFoundError("Model not found");
+      }
+      if (error.code === "P2002") {
+        throw new DuplicateNameError("A model with that name already exists.");
+      }
+    }
+    throw error;
+  }
 }
 
 export async function getModelDetail(id: string): Promise<ModelSummary | null> {
