@@ -1,15 +1,44 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useDatasets } from "../../lib/hooks/useDatasets";
-import { DatasetSheet } from "./dataset-sheet";
+import { useRouter } from "next/navigation";
 
 export function DatasetsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
-  const { datasets, isLoading } = useDatasets(search);
-  const [sheetState, setSheetState] = useState<{ id: string; name: string } | null>(null);
+  const { datasets, isLoading, refresh } = useDatasets(search);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const summaries = useMemo(() => datasets, [datasets]);
+
+  const handleDelete = useCallback(
+    async (datasetId: string, datasetName: string) => {
+      if (!window.confirm(`Delete dataset “${datasetName}”? This will remove all associated images.`)) {
+        return;
+      }
+
+      try {
+        setDeletingId(datasetId);
+        const res = await fetch(`/api/datasets/${datasetId}`, {
+          method: "DELETE"
+        });
+
+        if (!res.ok) {
+          const message = await res.text();
+          throw new Error(message || "Failed to delete dataset");
+        }
+
+        await refresh();
+      } catch (error) {
+        console.error("Error deleting dataset", error);
+        window.alert("Failed to delete dataset. Check logs for details.");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refresh]
+  );
 
   return (
     <section className="flex h-full w-full flex-col gap-6">
@@ -37,15 +66,36 @@ export function DatasetsPage() {
       ) : (
         <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
           {summaries.map((dataset) => (
-            <button
+            <div
               key={dataset.id}
-              type="button"
-              onClick={() => setSheetState({ id: dataset.id, name: dataset.name })}
-              className="flex flex-col gap-3 rounded-2xl border border-slate-900 bg-black/70 p-5 text-left shadow-lg shadow-black/30 transition hover:border-slate-600"
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push(`/datasets/${dataset.id}`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  router.push(`/datasets/${dataset.id}`);
+                }
+              }}
+              className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-slate-900 bg-black/70 p-5 text-left shadow-lg shadow-black/30 transition hover:border-slate-600 hover:bg-black/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40"
             >
-              <div>
-                <h3 className="text-lg font-semibold text-slate-100">{dataset.name}</h3>
-                <p className="text-xs uppercase tracking-wide text-slate-500">{dataset.slug}</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-100">{dataset.name}</h3>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">{dataset.slug}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleDelete(dataset.id, dataset.name);
+                  }}
+                  disabled={deletingId === dataset.id}
+                  className="rounded-lg border border-red-900/50 bg-black/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-300 transition hover:border-red-500 hover:text-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletingId === dataset.id ? "Deleting…" : "Delete"}
+                </button>
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs text-slate-400">
                 <div>
@@ -61,16 +111,10 @@ export function DatasetsPage() {
                   <dd className="text-slate-300">{new Date(dataset.createdAt).toLocaleString()}</dd>
                 </div>
               </dl>
-            </button>
+            </div>
           ))}
         </div>
       )}
-
-      <DatasetSheet
-        datasetId={sheetState?.id ?? null}
-        datasetName={sheetState?.name ?? null}
-        onClose={() => setSheetState(null)}
-      />
     </section>
   );
 }

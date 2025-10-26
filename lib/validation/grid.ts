@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const gridColumnSchema = z.object({
   id: z.string(),
-  modelId: z.string().uuid(),
+  modelId: z.string().uuid().nullable(),
   datasetId: z.string().uuid().nullable().optional(),
   label: z.string().optional()
 });

@@ -98,14 +98,26 @@ def discover_images(s3, model_name: str, prefix: str, limit: int | None) -> List
     for index, obj in enumerate(items):
         if limit is not None and index >= limit:
             break
-        source = f"s3://{bucket}/{obj['key']}"
-        encoded_key = quote(obj["key"], safe="/")
-        resolved_url = f"https://{bucket}.s3.amazonaws.com/{encoded_key}"
+        
+        # Generate signed URL with maximum expiration (7 days)
+        signed_url = s3.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': bucket,
+                'Key': obj['key']
+            },
+            ExpiresIn=604800  # 7 days (maximum allowed)
+        )
+        
         images.append(
             ImageSpec(
                 filename=obj["filename"],
-                source_url=resolved_url,
-                metadata={"model": model_name, "s3_key": obj["key"]},
+                source_url=signed_url,
+                metadata={
+                    "model": model_name,
+                    "s3_key": obj["key"],
+                    "s3_bucket": bucket  # Store bucket/key for potential regeneration
+                },
             )
         )
     return images

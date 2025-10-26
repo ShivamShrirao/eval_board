@@ -18,7 +18,7 @@ export function useModels(search: string) {
   }
   params.set("limit", "100");
 
-  const { data, error, isLoading } = useSWR<{ models: ModelSummary[] }>(
+  const { data, error, isLoading, mutate } = useSWR<{ models: ModelSummary[] }>(
     `/api/models?${params.toString()}`,
     fetcher
   );
@@ -26,6 +26,7 @@ export function useModels(search: string) {
   return {
     models: data?.models ?? [],
     isLoading,
-    isError: Boolean(error)
+    isError: Boolean(error),
+    refresh: () => mutate()
   };
 }

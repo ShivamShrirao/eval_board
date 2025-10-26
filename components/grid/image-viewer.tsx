@@ -4,7 +4,6 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import type { ImageArtifactDTO } from "../../lib/types";
-import { cn } from "../../lib/utils";
 
 interface ImageViewerProps {
   open: boolean;
@@ -52,6 +51,17 @@ export function ImageViewer({ open, artifact, onOpenChange, onNavigate }: ImageV
     return () => document.removeEventListener("keydown", handler);
   }, [open, onOpenChange]);
 
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -67,13 +77,14 @@ export function ImageViewer({ open, artifact, onOpenChange, onNavigate }: ImageV
                   <p className="mt-1 text-sm text-slate-400">{artifact.prompt}</p>
                 ) : null}
               </div>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="rounded-full border border-slate-600 px-3 py-1 text-sm text-slate-300 transition hover:border-slate-400 hover:text-white"
-              >
-                Close
-              </button>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-600 px-3 py-1 text-sm text-slate-300 transition hover:border-slate-400 hover:text-white"
+                >
+                  Close
+                </button>
+              </Dialog.Close>
             </header>
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -98,6 +109,10 @@ export function ImageViewer({ open, artifact, onOpenChange, onNavigate }: ImageV
                 )}
               </aside>
             </div>
+
+            <Dialog.Description className="sr-only">
+              Image preview dialog. Use arrow keys to move between grid images, and press Escape to close.
+            </Dialog.Description>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -12,12 +12,13 @@ interface ViewContextValue {
   config: GridViewConfig;
   setConfig: (value: Updater<GridViewConfig>) => void;
   setColumns: (value: Updater<GridColumnConfig[]>) => void;
-  addColumn: (modelId: string, label?: string) => void;
+  addColumn: (modelId?: string | null, label?: string) => void;
   updateColumn: (columnId: string, updater: Partial<GridColumnConfig>) => void;
   removeColumn: (columnId: string) => void;
   moveColumn: (columnId: string, direction: -1 | 1) => void;
   setDataset: (datasetId: string | null) => void;
-  markSaved: (viewId: string) => void;
+  hydrateConfig: (nextConfig: GridViewConfig, nextViewId?: string | null) => void;
+  markSaved: (viewId?: string | null) => void;
   markDirty: () => void;
   isDirty: boolean;
 }
@@ -59,19 +60,19 @@ export function ViewProvider({ initialViewId, initialConfig, children }: ViewPro
     });
   };
 
-  const markSaved = (nextViewId: string) => {
-    setViewId(nextViewId);
+  const markSaved = (nextViewId?: string | null) => {
+    setViewId(nextViewId ?? undefined);
     setDirtyFlag(false);
   };
 
   const markDirty = () => setDirtyFlag(true);
 
-  const addColumn = (modelId: string, label?: string) => {
+  const addColumn = (modelId?: string | null, label?: string) => {
     setColumns((columns) => [
       ...columns,
       {
         id: nanoid(10),
-        modelId,
+        modelId: modelId ?? null,
         label: label ?? undefined
       }
     ]);
@@ -111,6 +112,12 @@ export function ViewProvider({ initialViewId, initialConfig, children }: ViewPro
     }));
   };
 
+  const hydrateConfig = (nextConfig: GridViewConfig, nextViewId?: string | null) => {
+    setConfigState(nextConfig);
+    setViewId(nextViewId ?? undefined);
+    setDirtyFlag(false);
+  };
+
   return (
     <ViewContext.Provider
       value={{
@@ -123,6 +130,7 @@ export function ViewProvider({ initialViewId, initialConfig, children }: ViewPro
         removeColumn,
         moveColumn,
         setDataset,
+        hydrateConfig,
         markSaved,
         markDirty,
         isDirty

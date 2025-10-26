@@ -18,8 +18,6 @@ export function GridPage() {
   const { models } = useModels("");
   const { rows, isLoading } = useGridData(config);
 
-  const [pendingAddModel, setPendingAddModel] = useState<string | null>(null);
-
   const datasetOptions = useMemo(
     () =>
       datasets.map((dataset) => ({
@@ -42,30 +40,20 @@ export function GridPage() {
 
   const modelsMap = useMemo(() => new Map(modelOptions.map((option) => [option.value, option])), [modelOptions]);
 
-  const handleAddColumn = (modelId: string | null) => {
-    if (!modelId) return;
-    const meta = modelsMap.get(modelId);
-    addColumn(modelId, meta?.label);
-    setPendingAddModel(null);
+  const handleAddColumn = () => {
+    addColumn(null);
   };
 
   const [viewerState, setViewerState] = useState<{ rowIndex: number; columnIndex: number } | null>(null);
 
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
+  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual handles internal memoization.
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollParentRef.current,
     estimateSize: () => 260,
     overscan: 8
   });
-
-  const [listHeight, setListHeight] = useState(640);
-  useEffect(() => {
-    const handler = () => setListHeight(Math.max(360, window.innerHeight - 320));
-    handler();
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
 
   useEffect(() => {
     if (!viewerState) return;
@@ -127,17 +115,11 @@ export function GridPage() {
     const row = rows[index];
     if (!row) return null;
     const columnCount = config.columns.length;
-    const templateColumns = `220px repeat(${columnCount}, minmax(240px, 1fr))`;
+    const templateColumns = `repeat(${columnCount}, minmax(240px, 1fr))`;
 
     return (
       <div className="border-b border-slate-900/60">
         <div className="grid gap-4 px-4 py-3" style={{ gridTemplateColumns: templateColumns }}>
-          <div className="self-start rounded-lg bg-black/60 px-3 py-2 text-xs text-slate-300">
-            <div className="font-medium text-slate-100">{row.label}</div>
-            {row.prompt && row.prompt !== row.label ? (
-              <div className="mt-1 text-[11px] text-slate-500">{row.prompt}</div>
-            ) : null}
-          </div>
           {row.cells.map((cell, columnIndex) => (
             <GridCell key={`${row.key}-${columnIndex}`} artifact={cell.artifact} onOpen={() => openCell(index, columnIndex)} />
           ))}
@@ -145,6 +127,15 @@ export function GridPage() {
       </div>
     );
   };
+
+  const hasSelectedModels = config.columns.some((column) => column.modelId);
+
+  const columnGridTemplate =
+    config.columns.length > 0
+      ? {
+          gridTemplateColumns: `repeat(${config.columns.length}, minmax(220px, 1fr))`
+        }
+      : undefined;
 
   return (
     <section className="flex h-full w-full flex-col gap-6">
@@ -157,92 +148,97 @@ export function GridPage() {
               onSelect={(value) => setDataset(value)}
               placeholder="Select dataset"
               allowClear
-              buttonClassName="min-w-[240px] bg-black/80"
+              buttonClassName="min-w-[240px]"
             />
             <span className="hidden text-xs uppercase tracking-wide text-slate-500 sm:inline">
               {config.datasetId ? "Dataset selected" : "Choose a dataset"}
             </span>
           </div>
-
-          <SearchableDropdown
-            key={config.columns.length}
-            options={modelOptions}
-            value={pendingAddModel}
-            onSelect={(value) => {
-              setPendingAddModel(value);
-              handleAddColumn(value);
-            }}
-            placeholder="➕ Add model column"
-            buttonClassName="min-w-[200px] border-indigo-700/60 bg-indigo-600/20 text-indigo-200 hover:border-indigo-400 hover:text-indigo-100"
-          />
+          <button
+            type="button"
+            onClick={handleAddColumn}
+            className="ml-auto flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/85 px-4 py-2 text-sm font-semibold text-slate-200 shadow-[0_12px_28px_rgba(8,15,31,0.35)] transition hover:border-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40"
+            title="Add model column"
+          >
+            <span className="text-lg leading-none">+</span>
+            <span className="uppercase tracking-wide">Add column</span>
+          </button>
         </div>
 
-        <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
-          {config.columns.map((column, index) => (
-            <div key={column.id} className="flex min-w-[260px] flex-col gap-3 rounded-xl border border-slate-900 bg-black/75 p-4">
-              <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-500">
-                <span>Column {index + 1}</span>
-                <div className="flex items-center gap-1 text-slate-400">
-                  <button
-                    type="button"
-                    onClick={() => moveColumn(column.id, -1)}
-                    disabled={index === 0}
-                    className={cn(
-                      "rounded-md border border-slate-800 px-2 py-1 text-[11px] hover:border-slate-500",
-                      index === 0 && "opacity-40"
-                    )}
-                  >
-                    ←
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveColumn(column.id, 1)}
-                    disabled={index === config.columns.length - 1}
-                    className={cn(
-                      "rounded-md border border-slate-800 px-2 py-1 text-[11px] hover:border-slate-500",
-                      index === config.columns.length - 1 && "opacity-40"
-                    )}
-                  >
-                    →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeColumn(column.id)}
-                    className="rounded-md border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:border-red-500 hover:text-red-100"
-                  >
-                    Remove
-                  </button>
+        <div className="mt-5">
+          {config.columns.length > 0 ? (
+            <div className="grid gap-3" style={columnGridTemplate}>
+              {config.columns.map((column, index) => (
+                <div
+                  key={column.id}
+                  className="flex flex-col gap-3 rounded-xl border border-slate-900 bg-black/75 p-4 shadow-inner shadow-black/20"
+                >
+                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-500">
+                    <span>Column {index + 1}</span>
+                    <div className="flex items-center gap-1 text-slate-400">
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(column.id, -1)}
+                        disabled={index === 0}
+                        className={cn(
+                          "rounded-md border border-slate-800 px-2 py-1 text-[11px] hover:border-slate-500",
+                          index === 0 && "opacity-40"
+                        )}
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(column.id, 1)}
+                        disabled={index === config.columns.length - 1}
+                        className={cn(
+                          "rounded-md border border-slate-800 px-2 py-1 text-[11px] hover:border-slate-500",
+                          index === config.columns.length - 1 && "opacity-40"
+                        )}
+                      >
+                        →
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeColumn(column.id)}
+                        className="rounded-md border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:border-red-500 hover:text-red-100"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                  <SearchableDropdown
+                    options={modelOptions}
+                    value={column.modelId ?? null}
+                    onSelect={(value) => {
+                      const meta = value ? modelsMap.get(value) : undefined;
+                      updateColumn(column.id, {
+                        modelId: value ?? null,
+                        label: meta?.label
+                      });
+                    }}
+                    placeholder="Select model"
+                    allowClear
+                  />
                 </div>
-              </div>
-              <SearchableDropdown
-                options={modelOptions}
-                value={column.modelId}
-                onSelect={(value) => {
-                  if (!value) return;
-                  const meta = modelsMap.get(value);
-                  updateColumn(column.id, { modelId: value, label: meta?.label });
-                }}
-                placeholder="Select model"
-                buttonClassName="bg-black/80"
-              />
+              ))}
             </div>
-          ))}
-          {config.columns.length === 0 ? (
-            <div className="flex min-h-[140px] min-w-[260px] items-center justify-center rounded-xl border border-dashed border-slate-800/70 bg-black/60 text-sm text-slate-500">
-              Use the ➕ Add model column button to build your comparison.
+          ) : (
+            <div className="flex min-h-[140px] items-center justify-center rounded-xl border border-dashed border-slate-800/70 bg-black/60 text-sm text-slate-500">
+              Use the + button to add model columns for comparison.
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden rounded-2xl border border-slate-900 bg-black/50">
-        {!config.datasetId ? (
-          <div className="flex h-full items-center justify-center text-sm text-slate-500">
-            Select a dataset to populate the grid.
-          </div>
-        ) : config.columns.length === 0 ? (
+      <div className="flex-1 overflow-hidden rounded-2xl border border-slate-900 bg-transparent">
+        {config.columns.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             Add at least one model column to start comparing outputs.
+          </div>
+        ) : !hasSelectedModels ? (
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+            Assign a model to each column to populate the grid.
           </div>
         ) : isLoading && rows.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">Loading grid data...</div>
@@ -251,7 +247,7 @@ export function GridPage() {
             No images found for the current selection.
           </div>
         ) : (
-          <div ref={scrollParentRef} className="h-full w-full overflow-auto" style={{ maxHeight: listHeight }}>
+          <div ref={scrollParentRef} className="h-full w-full overflow-auto">
             <div
               style={{
                 height: rowVirtualizer.getTotalSize(),
@@ -297,20 +293,16 @@ function GridCell({ artifact, onOpen }: GridCellProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="group flex h-full flex-col gap-3 rounded-xl border border-slate-900 bg-black/80 p-3 text-left transition hover:border-slate-600"
+      className="group flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left transition hover:border-slate-600"
     >
-      <div className="flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
+      <div className="flex h-full items-center justify-center overflow-hidden rounded-lg bg-slate-950">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={artifact.sourceUrl}
           alt={artifact.prompt ?? artifact.filename}
           loading="lazy"
-          className="h-full max-h-52 w-full object-contain"
+          className="max-h-72 w-full object-contain transition group-hover:scale-[1.01]"
         />
-      </div>
-      <div className="text-xs text-slate-300">
-        <div className="font-medium text-slate-100">{artifact.filename}</div>
-        {artifact.prompt ? <div className="mt-1 text-slate-500">{artifact.prompt}</div> : null}
       </div>
     </button>
   ) : (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { cn } from "../../lib/utils";
 
 export interface DropdownOption {
@@ -34,6 +35,13 @@ export function SearchableDropdown({
   const [search, setSearch] = useState("");
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<{
+    left: number;
+    width: number;
+    top: number;
+    maxHeight: number;
+  }>({ left: 0, width: 240, top: 0, maxHeight: 256 });
+  const isBrowser = typeof document !== "undefined";
 
   const selected = useMemo(() => options.find((option) => option.value === value) ?? null, [options, value]);
 
@@ -52,15 +60,59 @@ export function SearchableDropdown({
         setOpen(false);
       }
     };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [open]);
 
-  useEffect(() => {
-    if (open) {
-      setSearch("");
+  const updatePopoverPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    if (!rect) return;
+
+    const minWidth = 260;
+    const width = Math.max(rect.width, minWidth);
+    const viewportWidth = window.innerWidth;
+    const horizontalMargin = 16;
+
+    let left = rect.left;
+    if (left + width + horizontalMargin > viewportWidth) {
+      left = Math.max(horizontalMargin, viewportWidth - width - horizontalMargin);
+    } else {
+      left = Math.max(horizontalMargin, left);
     }
-  }, [open]);
+
+    const maxHeight = Math.max(220, Math.min(360, window.innerHeight - rect.bottom - 24));
+    setPosition({
+      left,
+      width,
+      top: rect.bottom + 8,
+      maxHeight
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePopoverPosition();
+  }, [open, updatePopoverPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [open, updatePopoverPosition]);
 
   const filtered = useMemo(
     () =>
@@ -76,69 +128,104 @@ export function SearchableDropdown({
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() =>
+          setOpen((prev) => {
+            const next = !prev;
+            if (next) {
+              setSearch("");
+            }
+            return next;
+          })
+        }
         className={cn(
-          "inline-flex min-w-[220px] items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40",
-          disabled && "opacity-60",
+          "group inline-flex min-w-[240px] items-center justify-between gap-3 rounded-full border border-slate-700/70 bg-[#1f1f24] px-4 py-2 text-sm font-medium text-slate-100 shadow-[0_14px_30px_rgba(2,6,23,0.45)] transition hover:border-slate-500 hover:bg-[#26262c] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/60",
+          open && "border-slate-300 text-white shadow-[0_20px_46px_rgba(2,6,23,0.6)]",
+          disabled && "cursor-not-allowed opacity-50",
           buttonClassName
         )}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
-        <span className={cn(!selected && "text-slate-500")}>{selected ? selected.label : placeholder}</span>
-        <span className="text-slate-600">▾</span>
+        <span className={cn("truncate", !selected && "text-slate-400")}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <span
+          className={cn(
+            "flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-xs font-semibold transition",
+            open ? "rotate-180 text-slate-100" : "text-slate-400 group-hover:text-slate-200"
+          )}
+          aria-hidden
+        >
+          ▾
+        </span>
       </button>
 
-      {open ? (
-        <div
-          ref={popoverRef}
-          className="absolute z-50 mt-2 w-80 rounded-xl border border-slate-800 bg-slate-950/95 p-2 shadow-2xl backdrop-blur"
-        >
-          <input
-            autoFocus
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search..."
-            className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-slate-500 focus:outline-none"
-          />
-          <div className="mt-3 max-h-64 space-y-1 overflow-y-auto">
-            {allowClear && selected ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onSelect(null);
-                  setOpen(false);
-                }}
-                className="w-full rounded-md px-3 py-2 text-left text-xs uppercase tracking-wide text-slate-400 hover:bg-slate-900"
+      {open && isBrowser
+        ? createPortal(
+            <div
+              ref={popoverRef}
+              style={{
+                position: "fixed",
+                zIndex: 90,
+                width: position.width,
+                left: position.left,
+                top: position.top
+              }}
+              className="origin-top rounded-3xl border border-slate-800/60 bg-[#121216]/95 p-4 shadow-[0_32px_80px_rgba(2,6,23,0.65)] backdrop-blur-xl ring-1 ring-white/5"
+            >
+              <input
+                autoFocus
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search..."
+                className="w-full rounded-full border border-slate-700/60 bg-slate-900/80 px-4 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
+              />
+              <div
+                className="mt-4 space-y-1.5 overflow-y-auto pr-1"
+                role="listbox"
+                style={{ maxHeight: position.maxHeight }}
               >
-                Clear selection
-              </button>
-            ) : null}
+                {allowClear && selected ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelect(null);
+                      setOpen(false);
+                    }}
+                    className="w-full rounded-2xl bg-slate-900/60 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 transition hover:bg-slate-800/80 hover:text-white"
+                  >
+                    Clear selection
+                  </button>
+                ) : null}
 
-            {filtered.length === 0 ? (
-              <div className="px-3 py-6 text-center text-sm text-slate-500">{emptyMessage}</div>
-            ) : (
-              filtered.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onSelect(option.value);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "w-full rounded-md px-3 py-2 text-left text-sm transition hover:bg-slate-900",
-                    option.value === value && "bg-slate-900 text-slate-100"
-                  )}
-                >
-                  <div className="font-medium text-slate-100">{option.label}</div>
-                  {option.description ? (
-                    <div className="text-xs text-slate-400">{option.description}</div>
-                  ) : null}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      ) : null}
+                {filtered.length === 0 ? (
+                  <div className="px-3 py-6 text-center text-sm text-slate-500">{emptyMessage}</div>
+                ) : (
+                  filtered.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onSelect(option.value);
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "w-full rounded-2xl px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-slate-800/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/60",
+                        option.value === value && "bg-slate-800/80 text-white ring-1 ring-slate-500/50"
+                      )}
+                    >
+                      <div className="font-medium">{option.label}</div>
+                      {option.description ? (
+                        <div className="text-xs text-slate-400">{option.description}</div>
+                      ) : null}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

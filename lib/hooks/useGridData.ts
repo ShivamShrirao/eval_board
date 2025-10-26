@@ -15,7 +15,7 @@ const fetcher = async ([, config]: [string, GridViewConfig]) => {
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ config, take: 500 })
+    body: JSON.stringify({ config, take: 200 })
   });
 
   if (!res.ok) {
@@ -40,7 +40,8 @@ export interface GridRow {
 }
 
 export function useGridData(config: GridViewConfig) {
-  const shouldFetch = config.columns.length > 0 && Boolean(config.datasetId);
+  const hasSelectedModels = config.columns.some((column) => Boolean(column.modelId));
+  const shouldFetch = hasSelectedModels;
 
   const {
     data,
@@ -56,7 +57,7 @@ export function useGridData(config: GridViewConfig) {
   );
 
   const rows = useMemo<GridRow[]>(() => {
-    if (!data || !shouldFetch) {
+    if (!data || !hasSelectedModels) {
       return [];
     }
 
@@ -89,7 +90,7 @@ export function useGridData(config: GridViewConfig) {
     }
 
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [config, data, shouldFetch]);
+  }, [config, data, hasSelectedModels]);
 
   return {
     rows,

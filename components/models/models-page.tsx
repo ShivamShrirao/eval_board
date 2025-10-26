@@ -1,15 +1,44 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useModels } from "../../lib/hooks/useModels";
-import { ModelSheet } from "./model-sheet";
+import { useRouter } from "next/navigation";
 
 export function ModelsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
-  const { models, isLoading } = useModels(search);
-  const [sheetState, setSheetState] = useState<{ id: string; name: string } | null>(null);
+  const { models, isLoading, refresh } = useModels(search);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const summaries = useMemo(() => models, [models]);
+
+  const handleDelete = useCallback(
+    async (modelId: string, modelName: string) => {
+      if (!window.confirm(`Delete model “${modelName}”? This will remove all associated images.`)) {
+        return;
+      }
+
+      try {
+        setDeletingId(modelId);
+        const res = await fetch(`/api/models/${modelId}`, {
+          method: "DELETE"
+        });
+
+        if (!res.ok) {
+          const message = await res.text();
+          throw new Error(message || "Failed to delete model");
+        }
+
+        await refresh();
+      } catch (error) {
+        console.error("Error deleting model", error);
+        window.alert("Failed to delete model. Check logs for details.");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refresh]
+  );
 
   return (
     <section className="flex h-full w-full flex-col gap-6">
@@ -37,17 +66,38 @@ export function ModelsPage() {
       ) : (
         <div className="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-3">
           {summaries.map((model) => (
-            <button
+            <div
               key={model.id}
-              type="button"
-              onClick={() => setSheetState({ id: model.id, name: model.name })}
-              className="flex flex-col gap-3 rounded-2xl border border-slate-900 bg-black/70 p-5 text-left shadow-lg shadow-black/30 transition hover:border-slate-600"
+              role="button"
+              tabIndex={0}
+              onClick={() => router.push(`/models/${model.id}`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  router.push(`/models/${model.id}`);
+                }
+              }}
+              className="group flex cursor-pointer flex-col gap-4 rounded-2xl border border-slate-900 bg-black/70 p-5 text-left shadow-lg shadow-black/30 transition hover:border-slate-600 hover:bg-black/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40"
             >
-              <div>
-                <h3 className="text-lg font-semibold text-slate-100">{model.name}</h3>
-                {model.description ? (
-                  <p className="mt-1 text-sm text-slate-400">{model.description}</p>
-                ) : null}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-100">{model.name}</h3>
+                  {model.description ? (
+                    <p className="mt-1 text-sm text-slate-400">{model.description}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleDelete(model.id, model.name);
+                  }}
+                  disabled={deletingId === model.id}
+                  className="rounded-lg border border-red-900/50 bg-black/75 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-300 transition hover:border-red-500 hover:text-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletingId === model.id ? "Deleting…" : "Delete"}
+                </button>
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs text-slate-400">
                 <div>
@@ -67,16 +117,11 @@ export function ModelsPage() {
                   <dd className="text-slate-300">{model.slug}</dd>
                 </div>
               </dl>
-            </button>
+            </div>
           ))}
         </div>
       )}
 
-      <ModelSheet
-        modelId={sheetState?.id ?? null}
-        modelName={sheetState?.name ?? null}
-        onClose={() => setSheetState(null)}
-      />
     </section>
   );
 }

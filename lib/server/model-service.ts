@@ -9,6 +9,13 @@ import type {
   ModelSummary
 } from "../types";
 
+export class EntityNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EntityNotFoundError";
+  }
+}
+
 export async function listModels({
   search,
   take
@@ -146,5 +153,100 @@ export async function fetchArtifactsForGrid({
       capturedAt: artifact.capturedAt?.toISOString() ?? null
     })),
     nextCursor: hasNext ? artifacts[artifacts.length - 1].id : null
+  };
+}
+
+export async function deleteModelById(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const model = await tx.model.findUnique({ where: { id } });
+    if (!model) {
+      throw new EntityNotFoundError("Model not found");
+    }
+
+    const deletedArtifacts = await tx.imageArtifact.deleteMany({
+      where: { modelId: id }
+    });
+
+    await tx.model.delete({ where: { id } });
+
+    return {
+      deletedArtifacts: deletedArtifacts.count
+    };
+  });
+}
+
+export async function deleteDatasetById(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const dataset = await tx.dataset.findUnique({ where: { id } });
+    if (!dataset) {
+      throw new EntityNotFoundError("Dataset not found");
+    }
+
+    const deletedArtifacts = await tx.imageArtifact.deleteMany({
+      where: { datasetId: id }
+    });
+
+    await tx.dataset.delete({ where: { id } });
+
+    return {
+      deletedArtifacts: deletedArtifacts.count
+    };
+  });
+}
+
+export async function getModelDetail(id: string): Promise<ModelSummary | null> {
+  const model = await prisma.model.findUnique({
+    where: { id },
+    include: {
+      imageArtifacts: {
+        select: {
+          datasetId: true
+        }
+      }
+    }
+  });
+
+  if (!model) {
+    return null;
+  }
+
+  const datasetIds = new Set(model.imageArtifacts.map((artifact) => artifact.datasetId));
+
+  return {
+    id: model.id,
+    name: model.name,
+    slug: model.slug,
+    description: model.description,
+    createdAt: model.createdAt.toISOString(),
+    datasetCount: datasetIds.size,
+    imageCount: model.imageArtifacts.length
+  };
+}
+
+export async function getDatasetDetail(id: string): Promise<DatasetSummary | null> {
+  const dataset = await prisma.dataset.findUnique({
+    where: { id },
+    include: {
+      imageArtifacts: {
+        select: {
+          modelId: true
+        }
+      }
+    }
+  });
+
+  if (!dataset) {
+    return null;
+  }
+
+  const modelIds = new Set(dataset.imageArtifacts.map((artifact) => artifact.modelId));
+
+  return {
+    id: dataset.id,
+    name: dataset.name,
+    slug: dataset.slug,
+    createdAt: dataset.createdAt.toISOString(),
+    modelCount: modelIds.size,
+    imageCount: dataset.imageArtifacts.length
   };
 }

@@ -18,7 +18,7 @@ export function useDatasets(search: string) {
   }
   params.set("limit", "100");
 
-  const { data, error, isLoading } = useSWR<{ datasets: DatasetSummary[] }>(
+  const { data, error, isLoading, mutate } = useSWR<{ datasets: DatasetSummary[] }>(
     `/api/datasets?${params.toString()}`,
     fetcher
   );
@@ -26,6 +26,7 @@ export function useDatasets(search: string) {
   return {
     datasets: data?.datasets ?? [],
     isLoading,
-    isError: Boolean(error)
+    isError: Boolean(error),
+    refresh: () => mutate()
   };
 }

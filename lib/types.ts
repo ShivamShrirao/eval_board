@@ -2,7 +2,7 @@ export type UUID = string;
 
 export interface GridColumnConfig {
   id: string;
-  modelId: UUID;
+  modelId: UUID | null;
   datasetId?: UUID | null;
   label?: string;
 }
