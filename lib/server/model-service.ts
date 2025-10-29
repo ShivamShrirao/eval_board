@@ -132,24 +132,55 @@ export async function fetchArtifactsForGrid({
   cursor?: string | null;
   take: number;
 }): Promise<{ items: ImageArtifactDTO[]; nextCursor: string | null }> {
-  const where: Record<string, unknown> = {};
+  const selectedModelIds = Array.from(
+    new Set(
+      config.columns
+        .map((column) => column.modelId)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  const where: Prisma.ImageArtifactWhereInput = {};
 
   if (config.datasetId) {
     where.datasetId = config.datasetId;
   }
 
+  if (selectedModelIds.length > 0) {
+    where.modelId = { in: selectedModelIds };
+  }
+
+  const columnCount = Math.max(selectedModelIds.length, 1);
+  const effectiveTake = Math.max(take, 1);
+  const artifactTake = Math.min(effectiveTake * columnCount, 1000);
+
+  const groupField = config.breakdownBy === "prompt" ? "prompt" : "filename";
+
+  const orderBy: Prisma.ImageArtifactOrderByWithRelationInput[] =
+    config.sortBy === "createdAt"
+      ? [
+          { createdAt: "desc" },
+          { modelId: "asc" },
+          { [groupField]: "asc" } as Prisma.ImageArtifactOrderByWithRelationInput,
+          { id: "asc" }
+        ]
+      : [
+          { [groupField]: "asc" } as Prisma.ImageArtifactOrderByWithRelationInput,
+          { modelId: "asc" },
+          { createdAt: "desc" },
+          { id: "asc" }
+        ];
+
   const artifacts = await prisma.imageArtifact.findMany({
     where,
-    orderBy: {
-      createdAt: "desc"
-    },
-    take: take + 1,
+    orderBy,
+    take: artifactTake + 1,
     cursor: cursor ? { id: cursor } : undefined,
     skip: cursor ? 1 : 0
   });
 
-  const hasNext = artifacts.length > take;
-  const sliced = hasNext ? artifacts.slice(0, take) : artifacts;
+  const hasNext = artifacts.length > artifactTake;
+  const sliced = hasNext ? artifacts.slice(0, artifactTake) : artifacts;
 
   return {
     items: sliced.map((artifact) => ({

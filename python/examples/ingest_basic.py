@@ -14,17 +14,25 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".
 
 # Configuration - modify these variables as needed
 BASE_URL = "http://localhost:3000"
-DATASET_NAME = "new_hands_prompts_v3"
+DATASET_NAME = "hand_keywords"
 
 # List of (model_name, s3_prefix) tuples
 MODELS = [
-    ("alchamist_base_old_neg_prompt", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_base/checkpoint_1000/"),
-    ("neg_prompt_simple_128_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_128_lora/checkpoint_000400/"),
-    ("neg_prompt_simple_256_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_256_lora/checkpoint_000400/"),
-    ("alchamist_base_hand_only_neg_prompt", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_base/checkpoint_1000/"),
-    ("alchamist_base_no_neg", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_no_neg_base/checkpoint_1000/"),
-    ("neg_prompt_hand_only_128_lora_000200", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000200/"),
-    ("neg_prompt_hand_only_128_lora_000400", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000400/"),
+    # ("alchamist_base_old_neg_prompt", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_base/checkpoint_1000/"),
+    # ("neg_prompt_simple_128_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_128_lora/checkpoint_000400/"),
+    # ("neg_prompt_simple_256_lora", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_simple_256_lora/checkpoint_000400/"),
+    # ("alchamist_base_hand_only_neg_prompt", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_base/checkpoint_1000/"),
+    # ("alchamist_base_no_neg", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_no_neg_base/checkpoint_1000/"),
+    # ("neg_prompt_hand_only_128_lora_000200", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000200/"),
+    # ("neg_prompt_hand_only_128_lora_000400", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_only_128_lora/checkpoint_000400/"),
+    # ("neg_prompt_hand_keywords_200", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_keywords/checkpoint_000200/"),
+    # ("neg_prompt_hand_keywords_400", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_hand_keywords/checkpoint_000400/"),
+    # ("neg_prompt_realism_keywords_200", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_realism_keywords/checkpoint_000200/"),
+    # ("neg_prompt_realism_keywords_400", "s3://hot-data-foundations-useast1/shivam/eval/neg_prompt_realism_keywords/checkpoint_000400/"),
+    ('bad_images', "s3://hot-data-foundations-useast1/shivam/custom_dataset/neg_prompt_hand_keywords/bad_images/"),
+    # ('good_images', "s3://hot-data-foundations-useast1/shivam/custom_dataset/neg_prompt_hand_keywords/good_images/"),
+    # ('bad_images', "s3://hot-data-foundations-useast1/shivam/custom_dataset/neg_random_select/bad_images/"),
+    # ('good_images', "s3://hot-data-foundations-useast1/shivam/custom_dataset/neg_random_select/good_images/"),
 ]
 
 

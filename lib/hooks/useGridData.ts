@@ -39,6 +39,16 @@ export interface GridRow {
   cells: GridCell[];
 }
 
+const getBaseFilename = (filename: string | null | undefined) => {
+  if (!filename) return null;
+  const lastSegment = filename.split(/[/\\]/).pop() ?? filename;
+  const dotIndex = lastSegment.lastIndexOf(".");
+  if (dotIndex <= 0) {
+    return lastSegment;
+  }
+  return lastSegment.slice(0, dotIndex);
+};
+
 export function useGridData(config: GridViewConfig) {
   const hasSelectedModels = config.columns.some((column) => Boolean(column.modelId));
   const shouldFetch = hasSelectedModels;
@@ -70,9 +80,11 @@ export function useGridData(config: GridViewConfig) {
         continue;
       }
 
-      const keySource = config.breakdownBy === "prompt" && item.prompt ? item.prompt : item.filename;
+      const keySource =
+        config.breakdownBy === "prompt" && item.prompt ? item.prompt : getBaseFilename(item.filename);
       const key = keySource || item.id;
-      const label = item.filename || item.prompt || key;
+      const label =
+        (config.breakdownBy === "prompt" && item.prompt) || getBaseFilename(item.filename) || item.filename || key;
 
       if (!map.has(key)) {
         map.set(key, {
