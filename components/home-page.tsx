@@ -71,7 +71,7 @@ export function HomePage({ initialTab }: HomePageProps) {
         </div>
       </header>
 
-      <main className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 flex-col">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
           {content}
         </div>

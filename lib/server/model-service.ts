@@ -220,6 +220,24 @@ export async function deleteModelById(id: string) {
   });
 }
 
+export async function clearModelImages(id: string) {
+  return prisma.$transaction(async (tx) => {
+    const model = await tx.model.findUnique({ where: { id } });
+    if (!model) {
+      throw new EntityNotFoundError("Model not found");
+    }
+
+    const deletedArtifacts = await tx.imageArtifact.deleteMany({
+      where: { modelId: id }
+    });
+
+    return {
+      modelId: id,
+      deletedArtifacts: deletedArtifacts.count
+    };
+  });
+}
+
 export async function deleteDatasetById(id: string) {
   return prisma.$transaction(async (tx) => {
     const dataset = await tx.dataset.findUnique({ where: { id } });

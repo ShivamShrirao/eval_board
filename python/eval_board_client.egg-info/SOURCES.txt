@@ -11,4 +11,7 @@ eval_board_client.egg-info/dependency_links.txt
 eval_board_client.egg-info/entry_points.txt
 eval_board_client.egg-info/requires.txt
 eval_board_client.egg-info/top_level.txt
+examples/ingest_100k_upscale.py
 examples/ingest_basic.py
+examples/ingest_edit.py
+examples/ingest_edit_eval.py

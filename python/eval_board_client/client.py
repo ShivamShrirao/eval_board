@@ -93,6 +93,53 @@ class EvalBoardClient:
     def __exit__(self, exc_type, exc, tb) -> None:  # type: ignore[override]
         self.close()
 
+    def list_models(self, *, search: Optional[str] = None, limit: int = 100) -> list[Dict[str, Any]]:
+        """List models, optionally filtered by search term."""
+        params: Dict[str, Any] = {"limit": limit}
+        if search:
+            params["search"] = search
+        response = self._session.get(
+            f"{self.base_url}/models",
+            params=params,
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        return response.json().get("models", [])
+
+    def delete_model(self, model_id: str) -> Mapping[str, Any]:
+        """Delete a model by its ID."""
+        response = self._session.delete(
+            f"{self.base_url}/models/{model_id}",
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def delete_model_by_name(self, model_name: str) -> Optional[Mapping[str, Any]]:
+        """Delete a model by its name. Returns None if model not found."""
+        models = self.list_models(search=model_name)
+        for model in models:
+            if model.get("name") == model_name:
+                return self.delete_model(model["id"])
+        return None
+
+    def clear_model_images(self, model_id: str) -> Mapping[str, Any]:
+        """Delete all images from a model without deleting the model itself."""
+        response = self._session.delete(
+            f"{self.base_url}/models/{model_id}/images",
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def clear_model_images_by_name(self, model_name: str) -> Optional[Mapping[str, Any]]:
+        """Delete all images from a model by name. Returns None if model not found."""
+        models = self.list_models(search=model_name)
+        for model in models:
+            if model.get("name") == model_name:
+                return self.clear_model_images(model["id"])
+        return None
+
     def ingest(
         self,
         *,

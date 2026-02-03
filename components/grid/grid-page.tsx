@@ -9,6 +9,7 @@ import { SearchableDropdown } from "../ui/searchable-dropdown";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
+import { ImageDetailView } from "./image-detail-view";
 
 export function GridPage() {
   const { config, addColumn, updateColumn, removeColumn, moveColumn, setDataset } = useViewContext();
@@ -16,6 +17,44 @@ export function GridPage() {
   const { datasets } = useDatasets("");
   const { models } = useModels("");
   const { rows, isLoading } = useGridData(config);
+
+  const [selectedLocation, setSelectedLocation] = useState<{ rowIndex: number; colIndex: number } | null>(null);
+
+  const handleNavigate = (direction: "up" | "down" | "left" | "right") => {
+    if (!selectedLocation) return;
+    const { rowIndex, colIndex } = selectedLocation;
+    let nextRow = rowIndex;
+    let nextCol = colIndex;
+
+    // Helper to check if a cell has content
+    const hasContent = (r: number, c: number) => !!rows[r]?.cells[c]?.artifact;
+
+    if (direction === "up") {
+      nextRow--;
+      while (nextRow >= 0 && !hasContent(nextRow, colIndex)) nextRow--;
+    }
+    if (direction === "down") {
+      nextRow++;
+      while (nextRow < rows.length && !hasContent(nextRow, colIndex)) nextRow++;
+    }
+    if (direction === "left") {
+      nextCol--;
+      // Skip empty columns to find previous image in the same row
+      while (nextCol >= 0 && !hasContent(nextRow, nextCol)) nextCol--;
+    }
+    if (direction === "right") {
+      nextCol++;
+      // Skip empty columns to find next image in the same row
+      while (nextCol < config.columns.length && !hasContent(nextRow, nextCol)) nextCol++;
+    }
+
+    // Bounds check
+    if (nextRow >= 0 && nextRow < rows.length && nextCol >= 0 && nextCol < config.columns.length) {
+      if (hasContent(nextRow, nextCol)) {
+        setSelectedLocation({ rowIndex: nextRow, colIndex: nextCol });
+      }
+    }
+  };
 
   const datasetOptions = useMemo(
     () =>
@@ -68,7 +107,7 @@ export function GridPage() {
 
   const rowVirtualizer = useWindowVirtualizer({
     count: rows.length,
-    estimateSize: () => 260,
+    estimateSize: () => 350,
     overscan: 8,
     scrollMargin
   });
@@ -83,7 +122,15 @@ export function GridPage() {
       <div className="border-b border-slate-900/60">
         <div className="grid gap-4 py-3" style={{ gridTemplateColumns: templateColumns }}>
           {row.cells.map((cell, columnIndex) => (
-            <GridCell key={`${row.key}-${columnIndex}`} artifact={cell.artifact} />
+            <GridCell
+              key={`${row.key}-${columnIndex}`}
+              artifact={cell.artifact}
+              onClick={() => {
+                if (cell.artifact) {
+                  setSelectedLocation({ rowIndex: index, colIndex: columnIndex });
+                }
+              }}
+            />
           ))}
         </div>
       </div>
@@ -101,7 +148,7 @@ export function GridPage() {
 
   return (
     <section className="flex h-full w-full flex-col gap-6">
-      <div className="rounded-2xl border border-slate-900 bg-black/70 px-5 py-5 shadow-lg shadow-black/40">
+      <div className="sticky top-[53px] z-30 -mx-1 -mt-1 rounded-2xl border border-slate-900 bg-black/80 px-5 py-5 shadow-lg shadow-black/40 backdrop-blur-md">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <SearchableDropdown
@@ -110,7 +157,8 @@ export function GridPage() {
               onSelect={(value) => setDataset(value)}
               placeholder="Select dataset"
               allowClear
-              buttonClassName="min-w-[240px]"
+              buttonClassName="min-w-[240px] bg-black/60 hover:bg-black/80"
+              buttonStyle={{ color: "white" }}
             />
             <span className="hidden text-xs uppercase tracking-wide text-slate-500 sm:inline">
               {config.datasetId ? "Dataset selected" : "Choose a dataset"}
@@ -135,7 +183,7 @@ export function GridPage() {
                   key={column.id}
                   className="flex flex-col gap-3 rounded-xl border border-slate-900 bg-black/75 p-4 shadow-inner shadow-black/20"
                 >
-                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-500">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-300">
                     <span>Column {index + 1}</span>
                     <div className="flex items-center gap-1 text-slate-400">
                       <button
@@ -181,6 +229,8 @@ export function GridPage() {
                     }}
                     placeholder="Select model"
                     allowClear
+                    buttonClassName="w-full justify-between bg-black/60 hover:bg-black/80"
+                    buttonStyle={{ color: "white" }}
                   />
                 </div>
               ))}
@@ -233,29 +283,40 @@ export function GridPage() {
         )}
       </div>
 
+      {selectedLocation && rows[selectedLocation.rowIndex]?.cells[selectedLocation.colIndex]?.artifact && (
+        <ImageDetailView
+          artifact={rows[selectedLocation.rowIndex].cells[selectedLocation.colIndex].artifact!}
+          onClose={() => setSelectedLocation(null)}
+          onNavigate={handleNavigate}
+        />
+      )}
     </section>
   );
 }
 
 interface GridCellProps {
   artifact: ImageArtifactDTO | null;
+  onClick?: () => void;
 }
 
-function GridCell({ artifact }: GridCellProps) {
+function GridCell({ artifact, onClick }: GridCellProps) {
   return artifact ? (
-    <div className="flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left">
-      <div className="flex h-full items-center justify-center overflow-hidden rounded-lg bg-slate-950">
+    <div 
+      onClick={onClick}
+      className="flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left cursor-pointer transition hover:border-slate-700 hover:bg-black/90"
+    >
+      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-950">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={artifact.sourceUrl}
           alt={artifact.prompt ?? artifact.filename}
           loading="lazy"
-          className="max-h-72 w-full object-contain"
+          className="h-full w-full object-contain"
         />
       </div>
     </div>
   ) : (
-    <div className="flex h-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-black/60 p-3 text-xs text-slate-500">
+    <div className="flex h-72 w-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-black/60 p-3 text-xs text-slate-500">
       No image
     </div>
   );

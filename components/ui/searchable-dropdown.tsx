@@ -18,6 +18,7 @@ interface SearchableDropdownProps {
   emptyMessage?: string;
   allowClear?: boolean;
   buttonClassName?: string;
+  buttonStyle?: React.CSSProperties;
   disabled?: boolean;
 }
 
@@ -29,6 +30,7 @@ export function SearchableDropdown({
   emptyMessage = "No results",
   allowClear = false,
   buttonClassName,
+  buttonStyle,
   disabled = false
 }: SearchableDropdownProps) {
   const [open, setOpen] = useState(false);
@@ -137,16 +139,17 @@ export function SearchableDropdown({
             return next;
           })
         }
+        style={buttonStyle}
         className={cn(
-          "group inline-flex min-w-[240px] items-center justify-between gap-3 rounded-full border border-slate-700/70 bg-[#1f1f24] px-4 py-2 text-sm font-medium text-slate-100 shadow-[0_14px_30px_rgba(2,6,23,0.45)] transition hover:border-slate-500 hover:bg-[#26262c] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/60",
-          open && "border-slate-300 text-white shadow-[0_20px_46px_rgba(2,6,23,0.6)]",
+          "group inline-flex min-w-[240px] items-center justify-between gap-3 rounded-full border border-slate-700/70 bg-[#1f1f24] px-4 py-2 text-sm font-medium shadow-[0_14px_30px_rgba(2,6,23,0.45)] transition hover:border-slate-500 hover:bg-[#26262c] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/60",
+          open ? "border-slate-300 text-white shadow-[0_20px_46px_rgba(2,6,23,0.6)]" : "text-slate-200",
           disabled && "cursor-not-allowed opacity-50",
           buttonClassName
         )}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={cn("truncate", !selected && "text-slate-400")}>
+        <span className={cn("truncate", !selected ? "text-slate-400" : "text-inherit")}>
           {selected ? selected.label : placeholder}
         </span>
         <span

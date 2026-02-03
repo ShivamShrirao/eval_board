@@ -1,66 +1,54 @@
-#!/usr/bin/env python3
-"""Ingest Eval Board data by scanning S3 prefixes per model.
-
-Example usage:
-
-    python python/examples/ingest_basic.py \
-        --base-url http://localhost:3000 \
-        --dataset-name coco-validation \
-        --model "stable-diffusion-v4" s3://bucket/path/to/model_v4/ \
-        --model "stable-diffusion-v5" s3://bucket/path/to/model_v5/
-
-Requires AWS credentials (standard boto3 resolution).
-"""
-
 from __future__ import annotations
 
-import argparse
 import os
-from dataclasses import dataclass
-from typing import Dict, Iterable, Iterator, List
+from typing import Dict, Iterator, List
 
 import boto3
 from botocore.config import Config
 
 from eval_board_client import DatasetDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
+from requests import HTTPError
 
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 
+# Configuration - modify these variables as needed
+BASE_URL = "http://localhost:3000"
+DATASET_NAME = "refiner"
+BATCH_SIZE = 1000
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest Eval Board data from S3 prefixes.")
-    parser.add_argument("--base-url", default="http://localhost:3000", help="Eval Board base URL")
-    parser.add_argument("--dataset-name", required=True, help="Dataset name to associate with these images")
-    parser.add_argument(
-        "--dataset-slug",
-        help="Optional dataset slug; defaults to slugified dataset name"
-    )
-    parser.add_argument(
-        "--max-images",
-        type=int,
-        default=None,
-        help="Optional limit per model prefix"
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Print payload instead of POSTing"
-    )
-    parser.add_argument(
-        "--aws-region",
-        default=None,
-        help="Explicit AWS region for S3 client"
-    )
-    parser.add_argument(
-        "--model",
-        action="append",
-        nargs=2,
-        metavar=("MODEL_NAME", "S3_PREFIX"),
-        required=True,
-        help="Pair of model name and S3 prefix (may repeat)",
-    )
-    return parser.parse_args()
+# List of (model_name, s3_prefix) tuples
+MODELS = [
+    ("fibo_base", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo/"),
+    ("fibo-cfg-distill", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo-cfg-distill/1024x1024/"),
+    
+    ("fibo-edit-refiner-bench-step2500-gs1.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step2500-gs1.0/"),
+    ("fibo-edit-refiner-bench-step2500-gs2.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step2500-gs2.0/"),
+    ("fibo-edit-refiner-bench-step3750-gs1.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step3750-gs1.0/"),
+    ("fibo-edit-refiner-bench-step4250-gs1.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step4250-gs1.0/"),
+    ("fibo-edit-refiner-bench-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step5000-gs1.0-infer10/"),
+    ("fibo-edit-refiner-bench-distill-step1500-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-distill-step1500-gs1.0-infer10/"),
+
+    ("fibo-edit-refiner-bench-0.3-noise-step4500-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-0.3-noise-step4500-gs1.0-infer10/"),
+
+    ("fibo-refiner-quadrants-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer10/"),
+    ("fibo-refiner-quadrants-seed200050-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-seed200050-step5000-gs1.0-infer10/"),
+    ("fibo-refiner-quadrants-step5000-gs1.0-infer10-tiled", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer10-tiled/"),
+    ("fibo-refiner-quadrants-step5000-gs1.0-infer5-distill", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer5-distill/"),
+    ("fibo-refiner-quadrants-step5000-gs1.0-infer5-tiled-distill", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer5-tiled-distill/"),
+
+    ("refine-distilled-bench-quadrants-step4000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step4000-gs1.0-infer10/"),
+    ("refine-distilled-bench-quadrants-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step5000-gs1.0-infer10/"),
+    ("refine-distilled-bench-quadrants-step4000-gs1.0-infer10-tiled", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step4000-gs1.0-infer10-tiled/"),
+    ("refine-distilled-bench-quadrants-step5000-gs1.0-infer10-tiled", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step5000-gs1.0-infer10-tiled/"),
+
+    # ("upscale_comfyui_dbr_stage1", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_upscaled_comfyui_dbr_stage1/"),
+    ("upscale_comfyui_dbr_stage2", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_upscaled_comfyui_dbr_stage2/"),
+
+    # ("03interpolation_checkpoint1000", "s3://hot-data-foundations-useast1/eliran/upscaler/shivam_comparison/03interpolation_checkpoint1000/"),
+    # ("04noise_checkpoint750", "s3://hot-data-foundations-useast1/eliran/upscaler/shivam_comparison/04noise_checkpoint750/"),
+    # ("04noise_old_checkpoint750", "s3://hot-data-foundations-useast1/eliran/upscaler/shivam_comparison/04noise_old_checkpoint750/"),
+]
 
 
 def list_images_under_prefix(s3, bucket: str, prefix: str) -> Iterator[Dict[str, str]]:
@@ -88,74 +76,79 @@ def parse_s3_uri(uri: str) -> tuple[str, str]:
     return bucket, prefix
 
 
-def discover_images(s3, model_name: str, prefix: str, limit: int | None) -> List[ImageSpec]:
+def discover_images(s3, model_name: str, prefix: str) -> List[ImageSpec]:
     bucket, path = parse_s3_uri(prefix)
     items = list_images_under_prefix(s3, bucket, path)
 
     images: List[ImageSpec] = []
-    for index, obj in enumerate(items):
-        if limit is not None and index >= limit:
-            break
-        source = f"s3://{bucket}/{obj['key']}"
+    for obj in items:
+        # Generate signed URL with maximum expiration (7 days)
+        signed_url = s3.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': bucket,
+                'Key': obj['key']
+            },
+            ExpiresIn=604800  # 7 days (maximum allowed)
+        )
+        if "_checkpoint" in model_name:
+            base, ext = os.path.splitext(obj["filename"])
+            obj["filename"] = str(int(base)-1) + ext
         images.append(
             ImageSpec(
                 filename=obj["filename"],
-                source_url=source,
-                metadata={"model": model_name, "s3_key": obj["key"]},
+                source_url=signed_url,
+                metadata={
+                    "model": model_name,
+                    "s3_key": obj["key"],
+                    "s3_bucket": bucket  # Store bucket/key for potential regeneration
+                },
             )
         )
     return images
 
 
 def main() -> None:
-    args = parse_args()
-
-    session_config = {}
-    if args.aws_region:
-        session_config["region_name"] = args.aws_region
-
-    s3 = boto3.client("s3", config=Config(signature_version="s3v4"), **session_config)
-
-    dataset = DatasetDescriptor(name=args.dataset_name, slug=args.dataset_slug)
-
-    all_images: List[ImageSpec] = []
-    models: List[ModelDescriptor] = []
-
-    for model_name, prefix in args.model:
+    s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
+    dataset = DatasetDescriptor(name=DATASET_NAME)
+    client = EvalBoardClient(base_url=BASE_URL)
+    for model_name, prefix in MODELS:
         print(f"Discovering images for model '{model_name}' under {prefix}...")
-        images = discover_images(s3, model_name, prefix, args.max_images)
+        images = discover_images(s3, model_name, prefix)
         if not images:
             print(f"  No images found for {model_name} at {prefix}")
             continue
-        all_images.extend(images)
-        models.append(ModelDescriptor(name=model_name))
 
-    if not all_images:
-        print("No images discovered; nothing to ingest.")
-        return
-
-    model_descriptor = models[0]
-    if len(models) > 1:
+        model_descriptor = ModelDescriptor(name=model_name)
+        
+        # Batch the images into chunks of BATCH_SIZE
+        total_images = len(images)
+        num_batches = (total_images + BATCH_SIZE - 1) // BATCH_SIZE
         print(
-            "Multiple model prefixes provided; only the first model will be used for ingestion."
+            f"Preparing to ingest {total_images} images in {num_batches} batch(es) for model={model_descriptor.name}, dataset={dataset.name}"
         )
 
-    client = EvalBoardClient(base_url=args.base_url)
+        for batch_idx in range(num_batches):
+            start_idx = batch_idx * BATCH_SIZE
+            end_idx = min(start_idx + BATCH_SIZE, total_images)
+            batch_images = images[start_idx:end_idx]
+            
+            print(f"  Batch {batch_idx + 1}/{num_batches}: ingesting images {start_idx + 1}-{end_idx}...")
+            
+            try:
+                payload = client.ingest(
+                    model=model_descriptor,
+                    dataset=dataset,
+                    images=batch_images,
+                    dry_run=False,
+                )
+                print(f"  Batch {batch_idx + 1}/{num_batches} submitted successfully.")
+            except HTTPError as exc:
+                print(f"  Batch {batch_idx + 1}/{num_batches} failed for model '{model_name}': {exc.response.status_code} {exc.response.text}")
+            except Exception as exc:
+                print(f"  Batch {batch_idx + 1}/{num_batches} unexpected error for model '{model_name}': {exc}")
 
-    print(f"Preparing payload: model={model_descriptor.name}, dataset={dataset.name}, images={len(all_images)}")
-
-    payload = client.ingest(
-        model=model_descriptor,
-        dataset=dataset,
-        images=all_images,
-        dry_run=args.dry_run,
-    )
-
-    if args.dry_run:
-        print("Dry run payload preview:")
-        print(payload)
-    else:
-        print("Ingestion submitted successfully.")
+    print("Done.")
 
 
 if __name__ == "__main__":
