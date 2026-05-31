@@ -132,21 +132,12 @@ def generate_image_specs(s3, model_name: str, base_uri: str, relative_paths: Lis
 
         full_key = f"{base_prefix}{final_rel_path}"
         filename = os.path.basename(full_key)
-        
-        # Generate signed URL
-        signed_url = s3.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': bucket,
-                'Key': full_key
-            },
-            ExpiresIn=604800  # 7 days
-        )
+        source_uri = f"s3://{bucket}/{full_key}"
         
         specs.append(
             ImageSpec(
                 filename=filename,
-                source_url=signed_url,
+                source_url=source_uri,
                 metadata={
                     "model": model_name,
                     "s3_key": full_key,
@@ -209,4 +200,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

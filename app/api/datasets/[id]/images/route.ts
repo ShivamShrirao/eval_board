@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { mapArtifactsToDTO } from "@/lib/server/model-service";
+import { jsonResponse } from "@/lib/server/json-response";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -11,20 +13,5 @@ export async function GET(
     orderBy: { createdAt: "desc" }
   });
 
-  return NextResponse.json({
-    items: artifacts.map((artifact) => ({
-      id: artifact.id,
-      modelId: artifact.modelId,
-      datasetId: artifact.datasetId,
-      filename: artifact.filename,
-      prompt: artifact.prompt,
-      sourceUrl: artifact.sourceUrl,
-      thumbnailUrl: artifact.thumbnailUrl,
-      width: artifact.width,
-      height: artifact.height,
-      metadata: artifact.metadata,
-      createdAt: artifact.createdAt.toISOString(),
-      capturedAt: artifact.capturedAt?.toISOString() ?? null
-    }))
-  });
+  return jsonResponse({ items: await mapArtifactsToDTO(artifacts) }, request);
 }

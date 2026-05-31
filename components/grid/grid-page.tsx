@@ -3,18 +3,17 @@
 import { useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useViewContext } from "../view-context";
 import { useModels } from "../../lib/hooks/useModels";
-import { useDatasets } from "../../lib/hooks/useDatasets";
 import { useGridData } from "../../lib/hooks/useGridData";
 import { SearchableDropdown } from "../ui/searchable-dropdown";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import type { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { ImageDetailView } from "./image-detail-view";
+import { ArtifactImage } from "./artifact-image";
 
 export function GridPage() {
-  const { config, addColumn, updateColumn, removeColumn, moveColumn, setDataset } = useViewContext();
+  const { config, updateColumn, removeColumn, moveColumn } = useViewContext();
 
-  const { datasets } = useDatasets("");
   const { models } = useModels("");
   const { rows, isLoading } = useGridData(config);
 
@@ -56,16 +55,6 @@ export function GridPage() {
     }
   };
 
-  const datasetOptions = useMemo(
-    () =>
-      datasets.map((dataset) => ({
-        value: dataset.id,
-        label: dataset.name,
-        description: `${dataset.modelCount} models • ${dataset.imageCount} images`
-      })),
-    [datasets]
-  );
-
   const modelOptions = useMemo(
     () =>
       models.map((model) => ({
@@ -77,10 +66,6 @@ export function GridPage() {
   );
 
   const modelsMap = useMemo(() => new Map(modelOptions.map((option) => [option.value, option])), [modelOptions]);
-
-  const handleAddColumn = () => {
-    addColumn(null);
-  };
 
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -108,31 +93,45 @@ export function GridPage() {
   const rowVirtualizer = useWindowVirtualizer({
     count: rows.length,
     estimateSize: () => 350,
-    overscan: 8,
+    overscan: 16,
     scrollMargin
   });
+
+  const columnAspects = useMemo(() => {
+    return config.columns.map((_, colIdx) => {
+      for (const row of rows) {
+        const a = row.cells[colIdx]?.artifact;
+        if (a?.width && a?.height) {
+          return a.width / a.height;
+        }
+      }
+      return 1;
+    });
+  }, [config.columns, rows]);
+
+  const gridTemplateColumns = useMemo(() => {
+    if (columnAspects.length === 0) return "";
+    return columnAspects.map((a) => `minmax(0, ${a}fr)`).join(" ");
+  }, [columnAspects]);
 
   const renderRow = (index: number) => {
     const row = rows[index];
     if (!row) return null;
-    const columnCount = config.columns.length;
-    const templateColumns = `repeat(${columnCount}, minmax(240px, 1fr))`;
 
     return (
-      <div className="border-b border-slate-900/60">
-        <div className="grid gap-4 py-3" style={{ gridTemplateColumns: templateColumns }}>
-          {row.cells.map((cell, columnIndex) => (
-            <GridCell
-              key={`${row.key}-${columnIndex}`}
-              artifact={cell.artifact}
-              onClick={() => {
-                if (cell.artifact) {
-                  setSelectedLocation({ rowIndex: index, colIndex: columnIndex });
-                }
-              }}
-            />
-          ))}
-        </div>
+      <div className="grid" style={{ gridTemplateColumns }}>
+        {row.cells.map((cell, columnIndex) => (
+          <GridCell
+            key={`${row.key}-${columnIndex}`}
+            artifact={cell.artifact}
+            aspect={columnAspects[columnIndex] ?? 1}
+            onClick={() => {
+              if (cell.artifact) {
+                setSelectedLocation({ rowIndex: index, colIndex: columnIndex });
+              }
+            }}
+          />
+        ))}
       </div>
     );
   };
@@ -141,59 +140,35 @@ export function GridPage() {
 
   const columnGridTemplate =
     config.columns.length > 0
-      ? {
-          gridTemplateColumns: `repeat(${config.columns.length}, minmax(220px, 1fr))`
-        }
+      ? { gridTemplateColumns }
       : undefined;
 
   return (
-    <section className="flex h-full w-full flex-col gap-6">
-      <div className="sticky top-[53px] z-30 -mx-1 -mt-1 rounded-2xl border border-slate-900 bg-black/80 px-5 py-5 shadow-lg shadow-black/40 backdrop-blur-md">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <SearchableDropdown
-              options={datasetOptions}
-              value={config.datasetId ?? null}
-              onSelect={(value) => setDataset(value)}
-              placeholder="Select dataset"
-              allowClear
-              buttonClassName="min-w-[240px] bg-black/60 hover:bg-black/80"
-              buttonStyle={{ color: "white" }}
-            />
-            <span className="hidden text-xs uppercase tracking-wide text-slate-500 sm:inline">
-              {config.datasetId ? "Dataset selected" : "Choose a dataset"}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleAddColumn}
-            className="ml-auto flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-900/85 px-4 py-2 text-sm font-semibold text-slate-200 shadow-[0_12px_28px_rgba(8,15,31,0.35)] transition hover:border-slate-400 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40"
-            title="Add model column"
-          >
-            <span className="text-lg leading-none">+</span>
-            <span className="uppercase tracking-wide">Add column</span>
-          </button>
-        </div>
-
-        <div className="mt-5">
+    <section className="flex h-full w-full flex-col">
+      <div
+        className="sticky z-30 border-b border-slate-900 bg-black/80 backdrop-blur-md"
+        style={{ top: "var(--top-bar-h, 52px)" }}
+      >
+        <div>
           {config.columns.length > 0 ? (
-            <div className="grid gap-3" style={columnGridTemplate}>
+            <div className="grid" style={columnGridTemplate}>
               {config.columns.map((column, index) => (
                 <div
                   key={column.id}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-900 bg-black/75 p-4 shadow-inner shadow-black/20"
+                  className="flex min-w-0 flex-col gap-0 overflow-hidden py-0"
                 >
-                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-300">
-                    <span>Column {index + 1}</span>
-                    <div className="flex items-center gap-1 text-slate-400">
+                  <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
+                    <span>Col {index + 1}</span>
+                    <div className="flex items-center text-slate-500">
                       <button
                         type="button"
                         onClick={() => moveColumn(column.id, -1)}
                         disabled={index === 0}
                         className={cn(
-                          "rounded-md border border-slate-800 px-2 py-1 text-[11px] hover:border-slate-500",
-                          index === 0 && "opacity-40"
+                          "px-4 py-0.5 text-[11px] hover:bg-slate-800/60 hover:text-slate-200",
+                          index === 0 && "opacity-30"
                         )}
+                        title="Move left"
                       >
                         ←
                       </button>
@@ -202,18 +177,20 @@ export function GridPage() {
                         onClick={() => moveColumn(column.id, 1)}
                         disabled={index === config.columns.length - 1}
                         className={cn(
-                          "rounded-md border border-slate-800 px-2 py-1 text-[11px] hover:border-slate-500",
-                          index === config.columns.length - 1 && "opacity-40"
+                          "px-4 py-0.5 text-[11px] hover:bg-slate-800/60 hover:text-slate-200",
+                          index === config.columns.length - 1 && "opacity-30"
                         )}
+                        title="Move right"
                       >
                         →
                       </button>
                       <button
                         type="button"
                         onClick={() => removeColumn(column.id)}
-                        className="rounded-md border border-red-900/60 px-2 py-1 text-[11px] text-red-300 transition hover:border-red-500 hover:text-red-100"
+                        className="px-4 py-0.5 text-[11px] text-red-400 hover:bg-red-900/30 hover:text-red-200"
+                        title="Remove column"
                       >
-                        Remove
+                        ✕
                       </button>
                     </div>
                   </div>
@@ -229,21 +206,21 @@ export function GridPage() {
                     }}
                     placeholder="Select model"
                     allowClear
-                    buttonClassName="w-full justify-between bg-black/60 hover:bg-black/80"
+                    buttonClassName="w-full justify-between bg-black/60 hover:bg-black/80 !py-0 text-xs leading-tight"
                     buttonStyle={{ color: "white" }}
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="flex min-h-[140px] items-center justify-center rounded-xl border border-dashed border-slate-800/70 bg-black/60 text-sm text-slate-500">
+            <div className="flex min-h-[80px] items-center justify-center text-sm text-slate-500">
               Use the + button to add model columns for comparison.
             </div>
           )}
         </div>
       </div>
 
-      <div ref={gridContainerRef} className="flex-1 rounded-2xl border border-slate-900 bg-transparent">
+      <div ref={gridContainerRef} className="flex-1 bg-transparent">
         {config.columns.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             Add at least one model column to start comparing outputs.
@@ -259,12 +236,12 @@ export function GridPage() {
             No images found for the current selection.
           </div>
         ) : (
-          <div className="px-5">
+          <div>
             <div
               style={{
                 height: rowVirtualizer.getTotalSize(),
                 width: "100%",
-                position: "relative"
+                position: "relative",
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => (
@@ -296,28 +273,28 @@ export function GridPage() {
 
 interface GridCellProps {
   artifact: ImageArtifactDTO | null;
+  aspect: number;
   onClick?: () => void;
 }
 
-function GridCell({ artifact, onClick }: GridCellProps) {
+function GridCell({ artifact, aspect, onClick }: GridCellProps) {
   return artifact ? (
-    <div 
+    <div
       onClick={onClick}
-      className="flex h-full flex-col rounded-xl border border-slate-900 bg-black/80 p-3 text-left cursor-pointer transition hover:border-slate-700 hover:bg-black/90"
+      className="relative w-full overflow-hidden bg-black cursor-pointer"
+      style={{ aspectRatio: String(aspect) }}
     >
-      <div className="relative flex h-72 w-full items-center justify-center overflow-hidden rounded-lg bg-slate-950">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={artifact.sourceUrl}
-          alt={artifact.prompt ?? artifact.filename}
-          loading="lazy"
-          className="h-full w-full object-contain"
-        />
-      </div>
+      <ArtifactImage
+        artifact={artifact}
+        className="absolute inset-0 h-full w-full object-contain"
+      />
     </div>
   ) : (
-    <div className="flex h-72 w-full flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-black/60 p-3 text-xs text-slate-500">
-      No image
+    <div
+      className="flex w-full items-center justify-center bg-black/60 text-xs text-slate-600"
+      style={{ aspectRatio: String(aspect) }}
+    >
+      —
     </div>
   );
 }

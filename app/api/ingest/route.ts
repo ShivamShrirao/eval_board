@@ -2,11 +2,29 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ingestPayload } from "../../../lib/server/ingest-service";
 
+const s3UriPattern = /^s3:\/\/[^/]+\/.+$/;
+
+const sourceUrlSchema = z
+  .string()
+  .min(1, "sourceUrl is required")
+  .refine((value) => {
+    if (s3UriPattern.test(value)) {
+      return true;
+    }
+
+    try {
+      new URL(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }, "sourceUrl must be a valid URL or s3:// URI");
+
 const imageSchema = z.object({
   filename: z.string().min(1, "filename is required"),
-  sourceUrl: z.string().url("sourceUrl must be a valid URL"),
+  sourceUrl: sourceUrlSchema,
   prompt: z.string().optional().nullable(),
-  thumbnailUrl: z.string().url().optional().nullable(),
+  thumbnailUrl: sourceUrlSchema.optional().nullable(),
   width: z.number().int().min(1).max(16384).optional().nullable(),
   height: z.number().int().min(1).max(16384).optional().nullable(),
   metadata: z.record(z.string(), z.unknown()).optional().nullable(),

@@ -1,13 +1,15 @@
 import "server-only";
 
 import { prisma } from "../prisma";
-import { Prisma } from "@prisma/client";
+import { Prisma, type ImageArtifact } from "@prisma/client";
 import type {
   DatasetSummary,
   GridViewConfig,
   ImageArtifactDTO,
   ModelSummary
 } from "../types";
+import { resolveImageSourceUrl, resolveS3Location } from "./s3-url";
+import { removeCachedFiles } from "./image-cache";
 
 export class EntityNotFoundError extends Error {
   constructor(message: string) {
@@ -183,30 +185,61 @@ export async function fetchArtifactsForGrid({
   const sliced = hasNext ? artifacts.slice(0, artifactTake) : artifacts;
 
   return {
-    items: sliced.map((artifact) => ({
-      id: artifact.id,
-      modelId: artifact.modelId,
-      datasetId: artifact.datasetId,
-      filename: artifact.filename,
-      prompt: artifact.prompt,
-      sourceUrl: artifact.sourceUrl,
-      thumbnailUrl: artifact.thumbnailUrl,
-      width: artifact.width,
-      height: artifact.height,
-      metadata: artifact.metadata as Record<string, unknown> | null,
-      createdAt: artifact.createdAt.toISOString(),
-      capturedAt: artifact.capturedAt?.toISOString() ?? null
-    })),
+    items: await mapArtifactsToDTO(sliced),
     nextCursor: hasNext ? artifacts[artifacts.length - 1].id : null
   };
 }
 
+export async function mapArtifactsToDTO(artifacts: ImageArtifact[]): Promise<ImageArtifactDTO[]> {
+  return Promise.all(artifacts.map((artifact) => mapArtifactToDTO(artifact)));
+}
+
+async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactDTO> {
+  const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
+
+  const [sourceUrl, thumbnailUrl] = await Promise.all([
+    resolveImageSourceUrl({
+      sourceUrl: artifact.sourceUrl,
+      metadata
+    }),
+    artifact.thumbnailUrl
+      ? resolveImageSourceUrl({
+          sourceUrl: artifact.thumbnailUrl,
+          metadata
+        })
+      : Promise.resolve(null)
+  ]);
+
+  const s3Location = resolveS3Location(artifact.sourceUrl, metadata);
+  const cacheUrl = s3Location ? `/api/images/cache/${artifact.id}` : null;
+
+  return {
+    id: artifact.id,
+    modelId: artifact.modelId,
+    datasetId: artifact.datasetId,
+    filename: artifact.filename,
+    prompt: artifact.prompt,
+    sourceUrl,
+    cacheUrl,
+    thumbnailUrl,
+    width: artifact.width,
+    height: artifact.height,
+    metadata,
+    createdAt: artifact.createdAt.toISOString(),
+    capturedAt: artifact.capturedAt?.toISOString() ?? null
+  };
+}
+
 export async function deleteModelById(id: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const model = await tx.model.findUnique({ where: { id } });
     if (!model) {
       throw new EntityNotFoundError("Model not found");
     }
+
+    const artifactIds = await tx.imageArtifact
+      .findMany({ where: { modelId: id }, select: { id: true } })
+      .then((rows) => rows.map((row) => row.id));
 
     const deletedArtifacts = await tx.imageArtifact.deleteMany({
       where: { modelId: id }
@@ -215,35 +248,53 @@ export async function deleteModelById(id: string) {
     await tx.model.delete({ where: { id } });
 
     return {
+      artifactIds,
       deletedArtifacts: deletedArtifacts.count
     };
   });
+
+  await removeCachedFiles(result.artifactIds);
+
+  return { deletedArtifacts: result.deletedArtifacts };
 }
 
 export async function clearModelImages(id: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const model = await tx.model.findUnique({ where: { id } });
     if (!model) {
       throw new EntityNotFoundError("Model not found");
     }
+
+    const artifactIds = await tx.imageArtifact
+      .findMany({ where: { modelId: id }, select: { id: true } })
+      .then((rows) => rows.map((row) => row.id));
 
     const deletedArtifacts = await tx.imageArtifact.deleteMany({
       where: { modelId: id }
     });
 
     return {
+      artifactIds,
       modelId: id,
       deletedArtifacts: deletedArtifacts.count
     };
   });
+
+  await removeCachedFiles(result.artifactIds);
+
+  return { modelId: result.modelId, deletedArtifacts: result.deletedArtifacts };
 }
 
 export async function deleteDatasetById(id: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const dataset = await tx.dataset.findUnique({ where: { id } });
     if (!dataset) {
       throw new EntityNotFoundError("Dataset not found");
     }
+
+    const artifactIds = await tx.imageArtifact
+      .findMany({ where: { datasetId: id }, select: { id: true } })
+      .then((rows) => rows.map((row) => row.id));
 
     const deletedArtifacts = await tx.imageArtifact.deleteMany({
       where: { datasetId: id }
@@ -252,9 +303,14 @@ export async function deleteDatasetById(id: string) {
     await tx.dataset.delete({ where: { id } });
 
     return {
+      artifactIds,
       deletedArtifacts: deletedArtifacts.count
     };
   });
+
+  await removeCachedFiles(result.artifactIds);
+
+  return { deletedArtifacts: result.deletedArtifacts };
 }
 
 export async function updateModelName(id: string, name: string): Promise<ModelSummary> {

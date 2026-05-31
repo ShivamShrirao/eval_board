@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
@@ -72,6 +73,7 @@ class EvalBoardClient:
         base_url: str,
         *,
         api_key: Optional[str] = None,
+        password: Optional[str] = None,
         timeout: int = 30,
         session: Optional[requests.Session] = None,
     ) -> None:
@@ -81,6 +83,12 @@ class EvalBoardClient:
         self._session = session or requests.Session()
         if api_key:
             self._session.headers.update({"Authorization": f"Bearer {api_key}"})
+        # Eval Board's site password gate. The middleware accepts an
+        # x-eval-board-password header for programmatic clients. Pull from the
+        # explicit kwarg, then env, so scripts work without code changes.
+        resolved_password = password or os.environ.get("EVAL_BOARD_PASSWORD")
+        if resolved_password:
+            self._session.headers.update({"x-eval-board-password": resolved_password})
         self._session.headers.setdefault("Content-Type", "application/json")
         self._session.headers.setdefault("User-Agent", "eval-board-client/0.1.0")
 

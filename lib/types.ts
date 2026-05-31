@@ -48,6 +48,7 @@ export interface ImageArtifactDTO {
   filename: string;
   prompt?: string | null;
   sourceUrl: string;
+  cacheUrl?: string | null;
   thumbnailUrl?: string | null;
   width?: number | null;
   height?: number | null;

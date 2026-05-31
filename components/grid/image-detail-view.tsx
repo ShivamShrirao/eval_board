@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
+import { ArtifactImage } from "./artifact-image";
 
 interface ImageDetailViewProps {
   artifact: ImageArtifactDTO;
@@ -83,32 +84,28 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
 
       <div className="flex h-full w-full overflow-hidden min-h-0">
         {/* Main Image Area */}
-        <div className="flex-1 flex items-center justify-center p-0 relative group min-h-0">
-          
+        <div className="flex-1 min-w-0 min-h-0 relative group overflow-hidden bg-black">
+
           {/* Navigation Arrows */}
-          <button 
-            className="absolute left-8 p-4 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all z-40 outline-none focus:bg-white/10 focus:text-white backdrop-blur-sm"
+          <button
+            className="hidden absolute left-8 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all z-40 outline-none focus:bg-white/10 focus:text-white backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); onNavigate("left"); }}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
-          
-          <button 
-            className="absolute right-8 p-4 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all z-40 outline-none focus:bg-white/10 focus:text-white backdrop-blur-sm"
+
+          <button
+            className="hidden absolute right-8 top-1/2 -translate-y-1/2 p-4 rounded-full bg-black/20 hover:bg-black/50 text-white/50 hover:text-white transition-all z-40 outline-none focus:bg-white/10 focus:text-white backdrop-blur-sm"
             onClick={(e) => { e.stopPropagation(); onNavigate("right"); }}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
 
-          <div className="flex h-full w-full items-center justify-center overflow-auto bg-black">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={artifact.sourceUrl}
-              alt={artifact.prompt ?? artifact.filename}
-              className="h-full w-auto max-w-none object-contain shadow-2xl shadow-black/50 rounded-sm"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+          <ArtifactImage
+            artifact={artifact}
+            className="absolute inset-0 h-full w-full object-contain shadow-2xl shadow-black/50"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
 
         {/* Sidebar */}
@@ -128,7 +125,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                 <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
                   Prompt
                 </div>
-                <div className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap bg-white p-3 rounded-lg border border-slate-200">
+                <div className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-white p-3 rounded-lg border border-slate-200">
                   {artifact.prompt || <span className="italic text-slate-500">No prompt</span>}
                 </div>
               </div>
@@ -137,7 +134,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                 <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
                   Details
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm text-slate-900 bg-white p-3 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-2 gap-4 text-sm text-slate-900 bg-white p-3 rounded-lg border border-slate-200 [&>span]:min-w-0 [&>span]:break-words">
                   {artifact.width && artifact.height && (
                     <>
                       <span className="text-slate-600 text-xs">Dimensions</span>
@@ -157,9 +154,9 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   </div>
                   <div className="space-y-2">
                     {metadataEntries.map((entry) => (
-                      <div key={entry.key} className="flex flex-col gap-1 bg-white p-3 rounded-lg border border-slate-200">
-                        <span className="text-xs text-slate-600 font-mono uppercase">{entry.key}</span>
-                        <span className="text-xs text-slate-900 font-mono break-all">
+                      <div key={entry.key} className="flex flex-col gap-1 bg-white p-3 rounded-lg border border-slate-200 min-w-0">
+                        <span className="text-xs text-slate-600 font-mono uppercase break-words">{entry.key}</span>
+                        <span className="text-xs text-slate-900 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]">
                           {entry.value}
                         </span>
                       </div>

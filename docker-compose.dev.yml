@@ -5,13 +5,18 @@ services:
       target: runner
     image: eval-board:web
     ports:
-      - "3000:3000"
+      - "8080:8080"
     env_file:
       - .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eval_board
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
       NEXT_PUBLIC_S3_PUBLIC_BASE: ""
+      AWS_SDK_LOAD_CONFIG: "1"
+      IMAGE_CACHE_DIR: /opt/dlami/nvme/eval-board-cache
+    volumes:
+      - ${HOME}/.aws:/root/.aws:ro
+      - /opt/dlami/nvme/eval-board-cache:/opt/dlami/nvme/eval-board-cache
     depends_on:
       postgres:
         condition: service_healthy

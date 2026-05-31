@@ -38,8 +38,13 @@ def _load_manifest(path: Path) -> List[ImageSpec]:
 
 @app.command()
 def ingest(
-    base_url: str = typer.Option(..., help="Eval Board base URL (e.g. http://localhost:3000)"),
+    base_url: str = typer.Option(..., help="Eval Board base URL (e.g. http://localhost:8080)"),
     api_key: Optional[str] = typer.Option(None, help="API token for authenticated environments"),
+    password: Optional[str] = typer.Option(
+        None,
+        envvar="EVAL_BOARD_PASSWORD",
+        help="Site password (sent as x-eval-board-password). Defaults to EVAL_BOARD_PASSWORD env.",
+    ),
     model: str = typer.Option(..., help="Model name to register"),
     dataset: str = typer.Option(..., help="Dataset name to register"),
     manifest: Optional[Path] = typer.Option(None, exists=True, file_okay=True, dir_okay=False),
@@ -89,7 +94,7 @@ def ingest(
         table.caption = f"Showing first 10 of {len(images)} images."
     console.print(table)
 
-    with EvalBoardClient(base_url=base_url, api_key=api_key) as client:
+    with EvalBoardClient(base_url=base_url, api_key=api_key, password=password) as client:
         payload = client.ingest(
             model=ModelDescriptor(name=model),
             dataset=DatasetDescriptor(name=dataset),

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
+import { removeCachedFiles } from "./image-cache";
 
 export interface IngestModelInput {
   name: string;
@@ -110,6 +111,10 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
   );
 
   const result = await prisma.$transaction(operations);
+
+  // Invalidate any stale local cache entries; warming happens lazily on the
+  // next read via the cache route.
+  await removeCachedFiles(result.map((artifact) => artifact.id));
 
   return { modelId: model.id, datasetId: dataset.id, count: result.length };
 }

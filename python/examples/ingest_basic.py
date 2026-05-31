@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, Iterator, List
+import json
+from pathlib import Path
+from typing import Any, Dict, Iterator, List
 
 import boto3
 from botocore.config import Config
@@ -13,42 +15,97 @@ from requests import HTTPError
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 
 # Configuration - modify these variables as needed
-BASE_URL = "http://localhost:3000"
-DATASET_NAME = "refiner"
+BASE_URL = "http://localhost:8080"
+EVAL_BOARD_PASSWORD = "briaeval"
+DATASET_NAME = "benchmark"
 BATCH_SIZE = 1000
+PROMPTS_DIR = "/home/ubuntu/custom_dataset/benchmark/bench_prompts"
 
 # List of (model_name, s3_prefix) tuples
 MODELS = [
     ("fibo_base", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo/"),
     ("fibo-cfg-distill", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo-cfg-distill/1024x1024/"),
+
+    # ("fibo_base_512px", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_base_512px/"),
+    # ("fibo_base_4steps", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_base_4steps/"),
+    # ("fibo_base_512px_4steps", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_base_512px_4steps/"),
+
+    # ("dmd_infer_step1000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step1000/"),
+    # ("dmd_infer_step2000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step2000/"),
+    # ("dmd_infer_step2500", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step2500/"),
+    # ("dmd_infer_step3000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step3000/"),
+
+    # ("dmd_infer_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step1000_1024/"),
+    # ("dmd_infer_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step2000_1024/"),
+    # ("dmd_infer_step2500_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step2500_1024/"),
+    # ("dmd_infer_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_step3000_1024/"),
+
+    # ("dmd_infer_fs10_step1000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step1000/"),
+    # ("dmd_infer_fs10_step2000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step2000/"),
+    # ("dmd_infer_fs10_step2500", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step2500/"),
+    # ("dmd_infer_fs10_step3000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step3000/"),
+
+    # ("dmd_infer_fs10_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step1000_1024/"),
+    # ("dmd_infer_fs10_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step2000_1024/"),
+    # ("dmd_infer_fs10_step2500_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step2500_1024/"),
+    # ("dmd_infer_fs10_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fs10_step3000_1024/"),
+
+    # ("dmd_infer_1024data_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_1024data_step1000_1024/"),
+    # ("dmd_infer_1024data_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_1024data_step2000_1024/"),
+    # ("dmd_infer_1024data_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_1024data_step3000_1024/"),
+    # ("dmd_infer_1024data_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_1024data_step4000_1024/"),
+
+    # ("dmd_infer_init3000_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step1000_1024/"),
+    # ("dmd_infer_init3000_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step2000_1024/"),
+    # ("dmd_infer_init3000_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step3000_1024/"),
+    # ("dmd_infer_init3000_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step4000_1024/"),
+    # ("dmd_infer_init3000_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step5000_1024/"),
+
+    # ("dmd_infer_init3000_ema_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_ema_step4000_1024/"),
+    # ("dmd_infer_init3000_ema_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_ema_step5000_1024/"),
+
+    # ("dmd_infer_init3000_r128norm_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step1000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step1000_1024/"),
+    # ("dmd_infer_init3000_r128norm_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step2000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step2000_1024/"),
+    # ("dmd_infer_init3000_r128norm_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step3000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step3000_1024/"),
+    # ("dmd_infer_init3000_r128norm_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step4000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step4000_1024/"),
+    # ("dmd_infer_init3000_r128norm_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step5000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_1024/"),
+    # ("dmd_infer_init3000_r128norm_step12000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step12000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step12000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step12000_1024/"),
+    # ("dmd_infer_init3000_r128norm_step15000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step15000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step15000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step15000_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step15000_lora0p8_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step15000_lora0p8_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step5000_lora0p7_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_lora0p7_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step5000_lora0p8_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_lora0p8_1024/"),
+    # ("dmd_infer_init3000_r128norm_ema_step5000_lora0p9_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_lora0p9_1024/"),
+    # ("dmd_infer_fullft_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fullft_step4000_1024/"),
     
-    ("fibo-edit-refiner-bench-step2500-gs1.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step2500-gs1.0/"),
-    ("fibo-edit-refiner-bench-step2500-gs2.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step2500-gs2.0/"),
-    ("fibo-edit-refiner-bench-step3750-gs1.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step3750-gs1.0/"),
-    ("fibo-edit-refiner-bench-step4250-gs1.0", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step4250-gs1.0/"),
-    ("fibo-edit-refiner-bench-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-step5000-gs1.0-infer10/"),
-    ("fibo-edit-refiner-bench-distill-step1500-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-distill-step1500-gs1.0-infer10/"),
 
-    ("fibo-edit-refiner-bench-0.3-noise-step4500-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-0.3-noise-step4500-gs1.0-infer10/"),
+    # ("draft-realgen-hpsv3-300", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-realgen-hpsv3/ckpt_000300-lora-1.0-attn-mask/1024x1024/"),
+    # ("draft-realgen-hpsv3-500", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-realgen-hpsv3/ckpt_000500-lora-1.0-attn-mask/1024x1024/"),
+    # ("draft-realgen-hpsv3-700", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-realgen-hpsv3/ckpt_000700-lora-1.0-attn-mask/1024x1024/"),
+    # ("draft-realgen-hpsv3-1000", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-realgen-hpsv3/ckpt_001000-lora-1.0-attn-mask/1024x1024/"),
 
-    ("fibo-refiner-quadrants-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer10/"),
-    ("fibo-refiner-quadrants-seed200050-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-seed200050-step5000-gs1.0-infer10/"),
-    ("fibo-refiner-quadrants-step5000-gs1.0-infer10-tiled", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer10-tiled/"),
-    ("fibo-refiner-quadrants-step5000-gs1.0-infer5-distill", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer5-distill/"),
-    ("fibo-refiner-quadrants-step5000-gs1.0-infer5-tiled-distill", "s3://hot-data-foundations-useast1/shivam/eval/refiner/fibo-edit-refiner-bench-quadrants-step5000-gs1.0-infer5-tiled-distill/"),
-
-    ("refine-distilled-bench-quadrants-step4000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step4000-gs1.0-infer10/"),
-    ("refine-distilled-bench-quadrants-step5000-gs1.0-infer10", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step5000-gs1.0-infer10/"),
-    ("refine-distilled-bench-quadrants-step4000-gs1.0-infer10-tiled", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step4000-gs1.0-infer10-tiled/"),
-    ("refine-distilled-bench-quadrants-step5000-gs1.0-infer10-tiled", "s3://hot-data-foundations-useast1/shivam/eval/refiner/refine-distilled-bench-quadrants-step5000-gs1.0-infer10-tiled/"),
-
-    # ("upscale_comfyui_dbr_stage1", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_upscaled_comfyui_dbr_stage1/"),
-    ("upscale_comfyui_dbr_stage2", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/fibo_upscaled_comfyui_dbr_stage2/"),
-
-    # ("03interpolation_checkpoint1000", "s3://hot-data-foundations-useast1/eliran/upscaler/shivam_comparison/03interpolation_checkpoint1000/"),
-    # ("04noise_checkpoint750", "s3://hot-data-foundations-useast1/eliran/upscaler/shivam_comparison/04noise_checkpoint750/"),
-    # ("04noise_old_checkpoint750", "s3://hot-data-foundations-useast1/eliran/upscaler/shivam_comparison/04noise_old_checkpoint750/"),
+    # ("draft-dreamsim-hpsv3-300", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-dreamsim-hpsv3/ckpt_000300-lora-1.0/1024x1024/"),
+    # ("draft-dreamsim-hpsv3-500", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-dreamsim-hpsv3/ckpt_000500-lora-1.0/1024x1024/"),
+    # ("draft-dreamsim-hpsv3-700-attn-mask", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-dreamsim-hpsv3/ckpt_000700-lora-1.0-attn-mask/1024x1024/"),
 ]
+
+
+def load_prompt(filename: str) -> tuple[str | None, Dict[str, Any]]:
+    prompt_path = Path(PROMPTS_DIR) / f"{Path(filename).stem}.json"
+    if not prompt_path.is_file():
+        return None, {}
+
+    with prompt_path.open() as f:
+        prompt_json = json.load(f)
+
+    prompt = json.dumps(prompt_json, ensure_ascii=False)
+    return prompt, {"prompt_file": str(prompt_path)}
 
 
 def list_images_under_prefix(s3, bucket: str, prefix: str) -> Iterator[Dict[str, str]]:
@@ -82,27 +139,24 @@ def discover_images(s3, model_name: str, prefix: str) -> List[ImageSpec]:
 
     images: List[ImageSpec] = []
     for obj in items:
-        # Generate signed URL with maximum expiration (7 days)
-        signed_url = s3.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': bucket,
-                'Key': obj['key']
-            },
-            ExpiresIn=604800  # 7 days (maximum allowed)
-        )
+        source_uri = f"s3://{bucket}/{obj['key']}"
+        filename = obj["filename"]
         if "_checkpoint" in model_name:
-            base, ext = os.path.splitext(obj["filename"])
-            obj["filename"] = str(int(base)-1) + ext
+            base, ext = os.path.splitext(filename)
+            filename = str(int(base)-1) + ext
+        prompt, prompt_metadata = load_prompt(filename)
+        metadata = {
+            "model": model_name,
+            "s3_key": obj["key"],
+            "s3_bucket": bucket,
+            **prompt_metadata,
+        }
         images.append(
             ImageSpec(
-                filename=obj["filename"],
-                source_url=signed_url,
-                metadata={
-                    "model": model_name,
-                    "s3_key": obj["key"],
-                    "s3_bucket": bucket  # Store bucket/key for potential regeneration
-                },
+                filename=filename,
+                source_url=source_uri,
+                prompt=prompt,
+                metadata=metadata,
             )
         )
     return images
@@ -111,7 +165,7 @@ def discover_images(s3, model_name: str, prefix: str) -> List[ImageSpec]:
 def main() -> None:
     s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
     dataset = DatasetDescriptor(name=DATASET_NAME)
-    client = EvalBoardClient(base_url=BASE_URL)
+    client = EvalBoardClient(base_url=BASE_URL, password=EVAL_BOARD_PASSWORD)
     for model_name, prefix in MODELS:
         print(f"Discovering images for model '{model_name}' under {prefix}...")
         images = discover_images(s3, model_name, prefix)

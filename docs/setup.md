@@ -9,16 +9,27 @@ Copy `.env.example` to `.env` and fill in secrets. When using Docker, set:
 
 ```
 DATABASE_URL="postgresql://postgres:postgres@postgres:5432/eval_board"
-NEXT_PUBLIC_API_BASE_URL="http://localhost:3000"
+NEXT_PUBLIC_API_BASE_URL="http://localhost:8080"
 ```
 
 Any other values (e.g. `NEXT_PUBLIC_S3_PUBLIC_BASE`) can stay empty until needed.
+
+For private S3 assets ingested as `s3://bucket/key`, use your AWS CLI profile instead of hardcoding temporary session tokens in `.env`:
+
+```bash
+aws sso login --profile <your-profile>
+```
+
+- Set `AWS_PROFILE` in `.env` (for example `AWS_PROFILE=default`).
+- `docker-compose.dev.yml` mounts `~/.aws` into the web container and sets `AWS_SDK_LOAD_CONFIG=1`, so the Node AWS SDK resolves credentials from your shared CLI config/cache.
+- The API generates presigned URLs server-side on read and caches them in-memory (`S3_PRESIGN_CACHE_REFRESH_WINDOW_SECONDS`, `S3_PRESIGN_CACHE_MAX_ENTRIES`) to keep scrolling fast.
+- When the SSO session expires, re-run `aws sso login --profile <your-profile>` on the host; no `.env` token edits needed.
 
 ### 2. Build & Start Containers
 ```bash
 docker compose -f docker-compose.dev.yml up -d --build
 ```
-- Web UI: http://localhost:3000
+- Web UI: http://localhost:8080
 - Postgres: exposed on localhost:5432 (for external DB tools)
 - Rebuild after code changes: `docker compose -f docker-compose.dev.yml build web`
 

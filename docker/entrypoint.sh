@@ -11,7 +11,7 @@ if [ "${RUN_PRISMA_GENERATE:-0}" = "1" ]; then
   pnpm prisma generate
 fi
 
-PORT="${PORT:-3000}"
+PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
 
 export PORT

@@ -18,7 +18,7 @@ client = EvalBoardClient(base_url="http://localhost:3000", api_key="dev-token")
 images = [
     ImageSpec(
         filename="sample.png",
-        source_url="https://bucket.s3.amazonaws.com/run123/sample.png",
+        source_url="s3://bucket/run123/sample.png",
         prompt="a cat reading a book",
         metadata={"guidance_scale": 7.5, "steps": 30},
         width=1024,
@@ -48,7 +48,7 @@ eval-board ingest \
   "images": [
     {
       "filename": "sample.png",
-      "source_url": "https://bucket.s3.amazonaws.com/run123/sample.png",
+      "source_url": "s3://bucket/run123/sample.png",
       "prompt": "a cat reading a book",
       "width": 1024,
       "height": 1024,

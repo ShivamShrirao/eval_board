@@ -19,6 +19,7 @@ interface SearchableDropdownProps {
   allowClear?: boolean;
   buttonClassName?: string;
   buttonStyle?: React.CSSProperties;
+  labelClassName?: string;
   disabled?: boolean;
 }
 
@@ -31,6 +32,7 @@ export function SearchableDropdown({
   allowClear = false,
   buttonClassName,
   buttonStyle,
+  labelClassName,
   disabled = false
 }: SearchableDropdownProps) {
   const [open, setOpen] = useState(false);
@@ -141,7 +143,7 @@ export function SearchableDropdown({
         }
         style={buttonStyle}
         className={cn(
-          "group inline-flex min-w-[240px] items-center justify-between gap-3 rounded-full border border-slate-700/70 bg-[#1f1f24] px-4 py-2 text-sm font-medium shadow-[0_14px_30px_rgba(2,6,23,0.45)] transition hover:border-slate-500 hover:bg-[#26262c] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/60",
+          "group inline-flex items-center justify-between gap-3 rounded-full border border-slate-700/70 bg-[#1f1f24] px-4 py-2 text-sm font-medium shadow-[0_14px_30px_rgba(2,6,23,0.45)] transition hover:border-slate-500 hover:bg-[#26262c] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/60",
           open ? "border-slate-300 text-white shadow-[0_20px_46px_rgba(2,6,23,0.6)]" : "text-slate-200",
           disabled && "cursor-not-allowed opacity-50",
           buttonClassName
@@ -149,12 +151,15 @@ export function SearchableDropdown({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={cn("truncate", !selected ? "text-slate-400" : "text-inherit")}>
+        <span
+          className={cn("min-w-0 flex-1 text-left break-words [overflow-wrap:anywhere]", !selected ? "text-slate-400" : "text-inherit", labelClassName)}
+          title={selected ? selected.label : placeholder}
+        >
           {selected ? selected.label : placeholder}
         </span>
         <span
           className={cn(
-            "flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-xs font-semibold transition",
+            "flex h-4 w-4 items-center justify-center rounded-full bg-slate-900/70 text-[10px] font-semibold transition",
             open ? "rotate-180 text-slate-100" : "text-slate-400 group-hover:text-slate-200"
           )}
           aria-hidden
@@ -217,9 +222,9 @@ export function SearchableDropdown({
                         option.value === value && "bg-slate-800/80 text-white ring-1 ring-slate-500/50"
                       )}
                     >
-                      <div className="font-medium">{option.label}</div>
+                      <div className="font-medium break-words [overflow-wrap:anywhere]">{option.label}</div>
                       {option.description ? (
-                        <div className="text-xs text-slate-400">{option.description}</div>
+                        <div className="text-xs text-slate-400 break-words [overflow-wrap:anywhere]">{option.description}</div>
                       ) : null}
                     </button>
                   ))

@@ -39,3 +39,16 @@ __pycache__/
 .turbo/
 .vercel/
 *.sqlite3
+
+# Tool/agent caches
+.codex
+.claude/
+.cursor/
+
+# TS / build artifacts
+tsconfig.tsbuildinfo
+
+# Python build artifacts
+python/build/
+python/dist/
+*.egg-info/

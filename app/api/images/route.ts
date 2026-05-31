@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchArtifactsForGrid } from "../../../lib/server/model-service";
+import { jsonResponse } from "../../../lib/server/json-response";
 import { gridConfigSchema } from "../../../lib/validation/grid";
 
 const requestSchema = z.object({
@@ -35,8 +36,5 @@ export async function POST(request: NextRequest) {
     take: parsed.data.take ?? 50
   });
 
-  return NextResponse.json({
-    items,
-    nextCursor
-  });
+  return jsonResponse({ items, nextCursor }, request);
 }
