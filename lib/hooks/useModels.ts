@@ -11,12 +11,23 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function useModels(search: string) {
+export function useModels(
+  search: string,
+  options: {
+    datasetId?: string | null;
+    limit?: number;
+  } = {}
+) {
   const params = new URLSearchParams();
   if (search) {
     params.set("search", search);
   }
-  params.set("limit", "100");
+  if (options.datasetId) {
+    params.set("datasetId", options.datasetId);
+  }
+  if (options.limit) {
+    params.set("limit", String(options.limit));
+  }
 
   const { data, error, isLoading, mutate } = useSWR<{ models: ModelSummary[] }>(
     `/api/models?${params.toString()}`,

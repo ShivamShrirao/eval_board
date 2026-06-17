@@ -14,8 +14,13 @@ interface SearchableDropdownProps {
   options: DropdownOption[];
   value?: string | null;
   onSelect: (value: string | null) => void;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  selectedLabel?: string;
   placeholder?: string;
   emptyMessage?: string;
+  loadingMessage?: string;
+  isLoading?: boolean;
   allowClear?: boolean;
   buttonClassName?: string;
   buttonStyle?: React.CSSProperties;
@@ -27,8 +32,13 @@ export function SearchableDropdown({
   options,
   value,
   onSelect,
+  searchValue,
+  onSearchChange,
+  selectedLabel,
   placeholder = "Select...",
   emptyMessage = "No results",
+  loadingMessage = "Loading...",
+  isLoading = false,
   allowClear = false,
   buttonClassName,
   buttonStyle,
@@ -47,7 +57,24 @@ export function SearchableDropdown({
   }>({ left: 0, width: 240, top: 0, maxHeight: 256 });
   const isBrowser = typeof document !== "undefined";
 
-  const selected = useMemo(() => options.find((option) => option.value === value) ?? null, [options, value]);
+  const activeSearch = searchValue ?? search;
+  const setActiveSearch = useCallback(
+    (next: string) => {
+      if (onSearchChange) {
+        onSearchChange(next);
+      } else {
+        setSearch(next);
+      }
+    },
+    [onSearchChange]
+  );
+
+  const selected = useMemo(
+    () =>
+      options.find((option) => option.value === value) ??
+      (value && selectedLabel ? { value, label: selectedLabel } : null),
+    [options, selectedLabel, value]
+  );
 
   useEffect(() => {
     if (!open) {
@@ -121,9 +148,9 @@ export function SearchableDropdown({
   const filtered = useMemo(
     () =>
       options.filter((option) =>
-        option.label.toLowerCase().includes(search.toLowerCase().trim())
+        option.label.toLowerCase().includes(activeSearch.toLowerCase().trim())
       ),
-    [options, search]
+    [activeSearch, options]
   );
 
   return (
@@ -136,7 +163,7 @@ export function SearchableDropdown({
           setOpen((prev) => {
             const next = !prev;
             if (next) {
-              setSearch("");
+              setActiveSearch("");
             }
             return next;
           })
@@ -183,8 +210,8 @@ export function SearchableDropdown({
             >
               <input
                 autoFocus
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                value={activeSearch}
+                onChange={(event) => setActiveSearch(event.target.value)}
                 placeholder="Search..."
                 className="w-full rounded-full border border-slate-700/60 bg-slate-900/80 px-4 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
               />
@@ -206,7 +233,9 @@ export function SearchableDropdown({
                   </button>
                 ) : null}
 
-                {filtered.length === 0 ? (
+                {isLoading ? (
+                  <div className="px-3 py-6 text-center text-sm text-slate-500">{loadingMessage}</div>
+                ) : filtered.length === 0 ? (
                   <div className="px-3 py-6 text-center text-sm text-slate-500">{emptyMessage}</div>
                 ) : (
                   filtered.map((option) => (

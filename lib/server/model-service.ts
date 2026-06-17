@@ -33,20 +33,30 @@ const slugify = (value: string) =>
     .slice(0, 60);
 
 export async function listModels({
+  datasetId,
   search,
   take
 }: {
+  datasetId?: string;
   search?: string;
   take?: number;
 }): Promise<ModelSummary[]> {
-  const where = search
-    ? {
-        name: {
-          contains: search,
-          mode: Prisma.QueryMode.insensitive
-        }
+  const where: Prisma.ModelWhereInput = {};
+
+  if (search) {
+    where.name = {
+      contains: search,
+      mode: Prisma.QueryMode.insensitive
+    };
+  }
+
+  if (datasetId) {
+    where.imageArtifacts = {
+      some: {
+        datasetId
       }
-    : undefined;
+    };
+  }
 
   const models = await prisma.model.findMany({
     where,
@@ -56,6 +66,7 @@ export async function listModels({
     take,
     include: {
       imageArtifacts: {
+        where: datasetId ? { datasetId } : undefined,
         select: {
           id: true,
           datasetId: true

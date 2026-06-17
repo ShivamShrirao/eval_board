@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useViewContext } from "../view-context";
 import { useModels } from "../../lib/hooks/useModels";
 import { useGridData } from "../../lib/hooks/useGridData";
@@ -14,7 +14,10 @@ import { ArtifactImage } from "./artifact-image";
 export function GridPage() {
   const { config, updateColumn, removeColumn, moveColumn } = useViewContext();
 
-  const { models } = useModels("");
+  const [modelSearch, setModelSearch] = useState("");
+  const { models, isLoading: isModelsLoading } = useModels(modelSearch, {
+    datasetId: config.datasetId ?? null
+  });
   const { rows, isLoading } = useGridData(config);
 
   const [selectedLocation, setSelectedLocation] = useState<{ rowIndex: number; colIndex: number } | null>(null);
@@ -66,6 +69,10 @@ export function GridPage() {
   );
 
   const modelsMap = useMemo(() => new Map(modelOptions.map((option) => [option.value, option])), [modelOptions]);
+
+  useEffect(() => {
+    setModelSearch("");
+  }, [config.datasetId]);
 
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
@@ -197,6 +204,9 @@ export function GridPage() {
                   <SearchableDropdown
                     options={modelOptions}
                     value={column.modelId ?? null}
+                    selectedLabel={column.label}
+                    searchValue={modelSearch}
+                    onSearchChange={setModelSearch}
                     onSelect={(value) => {
                       const meta = value ? modelsMap.get(value) : undefined;
                       updateColumn(column.id, {
@@ -205,6 +215,8 @@ export function GridPage() {
                       });
                     }}
                     placeholder="Select model"
+                    emptyMessage={config.datasetId ? "No models found for this dataset" : "No models found"}
+                    isLoading={isModelsLoading}
                     allowClear
                     buttonClassName="w-full justify-between bg-black/60 hover:bg-black/80 !py-0 text-xs leading-tight"
                     buttonStyle={{ color: "white" }}

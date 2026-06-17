@@ -3,6 +3,7 @@ import { z } from "zod";
 import { listModels } from "../../../lib/server/model-service";
 
 const querySchema = z.object({
+  datasetId: z.string().uuid().optional(),
   search: z
     .string()
     .trim()
@@ -11,8 +12,8 @@ const querySchema = z.object({
   limit: z
     .string()
     .transform((value) => Number.parseInt(value, 10))
-    .refine((value) => Number.isInteger(value) && value > 0 && value <= 100, {
-      message: "limit must be between 1 and 100"
+    .refine((value) => Number.isInteger(value) && value > 0, {
+      message: "limit must be a positive integer"
     })
     .optional()
 });
@@ -33,8 +34,9 @@ export async function GET(request: NextRequest) {
   }
 
   const models = await listModels({
+    datasetId: parsed.data.datasetId,
     search: parsed.data.search,
-    take: parsed.data.limit ?? 20
+    take: parsed.data.limit
   });
 
   return NextResponse.json({
