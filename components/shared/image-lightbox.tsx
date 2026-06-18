@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, type ReactNode } from "react";
+import { useEffect, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/utils";
 import type { ImageArtifactDTO } from "../../lib/types";
@@ -33,13 +33,7 @@ export function ImageLightbox({
   onClose,
   onNavigate,
 }: ImageLightboxProps) {
-  const [mounted, setMounted] = useState(false);
   const open = image !== null;
-
-  // Handle client-side mounting
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const navigateToDirection = useCallback(
     (direction: "up" | "down" | "left" | "right") => {
@@ -111,8 +105,8 @@ export function ImageLightbox({
     };
   }, [open, onClose, navigateToDirection]);
 
-  // Don't render until mounted on client and we have an image
-  if (!mounted || !image) {
+  // Don't render until we can create a portal in the browser.
+  if (typeof document === "undefined" || !image) {
     return null;
   }
 

@@ -10,18 +10,22 @@ import { DEFAULT_GRID_VIEW } from "../lib/types";
 const SAVE_DEBOUNCE = 600;
 const EMPTY_SERIALIZED = stableStringify(DEFAULT_GRID_VIEW);
 const VIEW_CACHE = new Map<string, string>();
+const CLEAR_VIEW_PARAM = Symbol("clear-view-param");
 
 export function useViewPersistence() {
   const { config, viewId, markSaved, isDirty, hydrateConfig } = useViewContext();
   const router = useRouter();
   const searchParams = useSearchParams();
   const lastSerializedRef = useRef<string | null>(null);
+  const latestSerializedRef = useRef<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingIdRef = useRef<string | null>(null);
+  const pendingUrlViewRef = useRef<string | typeof CLEAR_VIEW_PARAM | null>(null);
   const loadingViewRef = useRef<string | null>(null);
 
   useEffect(() => {
     const serialized = stableStringify(config);
+    latestSerializedRef.current = serialized;
     const isEmpty = serialized === EMPTY_SERIALIZED;
     const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
     const requestedView = params.get("view");
@@ -38,6 +42,7 @@ export function useViewPersistence() {
           params.delete("view");
           const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
           const query = params.toString();
+          pendingUrlViewRef.current = CLEAR_VIEW_PARAM;
           router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
         }
       }
@@ -58,6 +63,7 @@ export function useViewPersistence() {
         clearedParams.delete("view");
         const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
         const query = clearedParams.toString();
+        pendingUrlViewRef.current = CLEAR_VIEW_PARAM;
         router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
       }
       return;
@@ -74,6 +80,7 @@ export function useViewPersistence() {
       if (nextParams.get("view") !== cachedKey) {
         nextParams.set("view", cachedKey);
         const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+        pendingUrlViewRef.current = cachedKey;
         router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
       }
       return;
@@ -101,8 +108,12 @@ export function useViewPersistence() {
           return;
         }
 
-        lastSerializedRef.current = serialized;
         VIEW_CACHE.set(serialized, key);
+        if (latestSerializedRef.current !== serialized) {
+          return;
+        }
+
+        lastSerializedRef.current = serialized;
         markSaved(key);
         pendingIdRef.current = null;
 
@@ -110,6 +121,7 @@ export function useViewPersistence() {
         nextParams.set("view", key);
         const query = nextParams.toString();
         const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+        pendingUrlViewRef.current = key;
         router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
       } catch (error) {
         console.error("Error persisting view", error);
@@ -126,7 +138,24 @@ export function useViewPersistence() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
     const requestedView = params.get("view");
+
+    const pendingUrlView = pendingUrlViewRef.current;
+    if (pendingUrlView) {
+      if (
+        (pendingUrlView === CLEAR_VIEW_PARAM && !requestedView) ||
+        requestedView === pendingUrlView
+      ) {
+        pendingUrlViewRef.current = null;
+      } else {
+        return;
+      }
+    }
+
     if (!requestedView) {
+      return;
+    }
+
+    if (isDirty) {
       return;
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useLayoutEffect } from "react";
 import { useViewContext } from "../view-context";
 import { useModels } from "../../lib/hooks/useModels";
 import { useGridData } from "../../lib/hooks/useGridData";
@@ -14,9 +14,20 @@ import { ArtifactImage } from "./artifact-image";
 export function GridPage() {
   const { config, updateColumn, removeColumn, moveColumn } = useViewContext();
 
-  const [modelSearch, setModelSearch] = useState("");
+  const datasetId = config.datasetId ?? null;
+  const [modelSearchState, setModelSearchState] = useState<{ datasetId: string | null; value: string }>({
+    datasetId: null,
+    value: ""
+  });
+  const modelSearch = modelSearchState.datasetId === datasetId ? modelSearchState.value : "";
+  const setModelSearch = useCallback(
+    (value: string) => {
+      setModelSearchState({ datasetId, value });
+    },
+    [datasetId]
+  );
   const { models, isLoading: isModelsLoading } = useModels(modelSearch, {
-    datasetId: config.datasetId ?? null
+    datasetId
   });
   const { rows, isLoading } = useGridData(config);
 
@@ -69,10 +80,6 @@ export function GridPage() {
   );
 
   const modelsMap = useMemo(() => new Map(modelOptions.map((option) => [option.value, option])), [modelOptions]);
-
-  useEffect(() => {
-    setModelSearch("");
-  }, [config.datasetId]);
 
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
