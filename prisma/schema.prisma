@@ -52,6 +52,8 @@ model ImageArtifact {
   @@unique([modelId, datasetId, filename], name: "modelId_datasetId_filename")
   @@index([modelId, datasetId])
   @@index([datasetId, createdAt])
+  @@index([datasetId, filename, modelId, createdAt(sort: Desc), id], name: "ImageArtifact_grid_filename_idx")
+  @@index([datasetId, createdAt(sort: Desc), modelId, filename, id], name: "ImageArtifact_grid_createdAt_idx")
   @@index([promptHash])
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import useSWR from "swr";
 import { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
 import { ArtifactImage } from "./artifact-image";
@@ -11,7 +12,25 @@ interface ImageDetailViewProps {
   onNavigate: (direction: "up" | "down" | "left" | "right") => void;
 }
 
+const fetchImageDetail = async (url: string): Promise<{ item: ImageArtifactDTO }> => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to load image detail: ${await res.text()}`);
+  }
+  return res.json();
+};
+
 export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailViewProps) {
+  const { data: detail } = useSWR(
+    artifact.metadata ? null : `/api/images/${artifact.id}`,
+    fetchImageDetail,
+    {
+      revalidateOnFocus: false,
+      revalidateIfStale: false
+    }
+  );
+  const displayArtifact = detail?.item ?? artifact;
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,8 +71,8 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
   }, []);
 
   // Format metadata for display
-  const metadataEntries = artifact.metadata
-    ? Object.entries(artifact.metadata).map(([key, value]) => ({
+  const metadataEntries = displayArtifact.metadata
+    ? Object.entries(displayArtifact.metadata).map(([key, value]) => ({
         key,
         value: typeof value === "object" ? JSON.stringify(value) : String(value),
       }))
@@ -102,7 +121,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
           </button>
 
           <ArtifactImage
-            artifact={artifact}
+            artifact={displayArtifact}
             className="absolute inset-0 h-full w-full object-contain shadow-2xl shadow-black/50"
             onClick={(e) => e.stopPropagation()}
           />
@@ -116,7 +135,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
         >
           <div className="relative z-10 flex-1 overflow-y-auto p-6">
             <h2 className="text-xl font-semibold text-slate-900 mb-4 break-words">
-              {artifact.filename}
+              {displayArtifact.filename}
             </h2>
 
             <div className="space-y-6">
@@ -126,7 +145,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   Prompt
                 </div>
                 <div className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-white p-3 rounded-lg border border-slate-200">
-                  {artifact.prompt || <span className="italic text-slate-500">No prompt</span>}
+                  {displayArtifact.prompt || <span className="italic text-slate-500">No prompt</span>}
                 </div>
               </div>
 
@@ -135,14 +154,14 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   Details
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm text-slate-900 bg-white p-3 rounded-lg border border-slate-200 [&>span]:min-w-0 [&>span]:break-words">
-                  {artifact.width && artifact.height && (
+                  {displayArtifact.width && displayArtifact.height && (
                     <>
                       <span className="text-slate-600 text-xs">Dimensions</span>
-                      <span>{artifact.width} x {artifact.height}</span>
+                      <span>{displayArtifact.width} x {displayArtifact.height}</span>
                     </>
                   )}
                   <span className="text-slate-600 text-xs">Created</span>
-                  <span>{new Date(artifact.createdAt).toLocaleDateString()}</span>
+                  <span>{new Date(displayArtifact.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
 

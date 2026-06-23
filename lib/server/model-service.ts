@@ -196,13 +196,41 @@ export async function fetchArtifactsForGrid({
   const sliced = hasNext ? artifacts.slice(0, artifactTake) : artifacts;
 
   return {
-    items: await mapArtifactsToDTO(sliced),
+    items: await mapArtifactsToGridDTO(sliced),
     nextCursor: hasNext ? artifacts[artifacts.length - 1].id : null
   };
 }
 
 export async function mapArtifactsToDTO(artifacts: ImageArtifact[]): Promise<ImageArtifactDTO[]> {
   return Promise.all(artifacts.map((artifact) => mapArtifactToDTO(artifact)));
+}
+
+function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifactDTO[]> {
+  return Promise.all(artifacts.map(async (artifact) => {
+    const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
+    const s3Location = resolveS3Location(artifact.sourceUrl, metadata);
+    const cacheUrl = s3Location ? `/api/images/cache/${artifact.id}` : null;
+    const sourceUrl = await resolveImageSourceUrl({
+      sourceUrl: artifact.sourceUrl,
+      metadata
+    });
+
+    return {
+      id: artifact.id,
+      modelId: artifact.modelId,
+      datasetId: artifact.datasetId,
+      filename: artifact.filename,
+      prompt: artifact.prompt,
+      sourceUrl,
+      cacheUrl,
+      thumbnailUrl: null,
+      width: artifact.width,
+      height: artifact.height,
+      metadata: null,
+      createdAt: artifact.createdAt.toISOString(),
+      capturedAt: artifact.capturedAt?.toISOString() ?? null
+    };
+  }));
 }
 
 async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactDTO> {
