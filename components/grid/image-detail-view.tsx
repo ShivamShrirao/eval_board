@@ -80,8 +80,9 @@ const renderJsonSyntax = (json: string): ReactNode[] => {
 };
 
 export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailViewProps) {
-  const { data: detail } = useSWR(
-    artifact.metadata ? null : `/api/images/${artifact.id}`,
+  const shouldLoadDetail = !artifact.metadata;
+  const { data: detail, isLoading: isLoadingDetail } = useSWR(
+    shouldLoadDetail ? `/api/images/${artifact.id}` : null,
     fetchImageDetail,
     {
       revalidateOnFocus: false,
@@ -248,6 +249,10 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                     >
                       {prompt.isJson ? renderJsonSyntax(prompt.value) : prompt.value}
                     </pre>
+                  ) : isLoadingDetail ? (
+                    <span className="text-sm font-medium uppercase tracking-wide text-slate-500">
+                      Loading METADATA
+                    </span>
                   ) : (
                     <span className="text-sm italic text-slate-500">No prompt</span>
                   )}
