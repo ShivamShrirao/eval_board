@@ -167,18 +167,16 @@ export async function fetchArtifactsForGrid({
   const effectiveTake = Math.max(take, 1);
   const artifactTake = Math.min(effectiveTake * columnCount, 1000);
 
-  const groupField = config.breakdownBy === "prompt" ? "prompt" : "filename";
-
   const orderBy: Prisma.ImageArtifactOrderByWithRelationInput[] =
     config.sortBy === "createdAt"
       ? [
           { createdAt: "desc" },
           { modelId: "asc" },
-          { [groupField]: "asc" } as Prisma.ImageArtifactOrderByWithRelationInput,
+          { filename: "asc" },
           { id: "asc" }
         ]
       : [
-          { [groupField]: "asc" } as Prisma.ImageArtifactOrderByWithRelationInput,
+          { filename: "asc" },
           { modelId: "asc" },
           { createdAt: "desc" },
           { id: "asc" }
@@ -220,7 +218,7 @@ function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifac
       modelId: artifact.modelId,
       datasetId: artifact.datasetId,
       filename: artifact.filename,
-      prompt: artifact.prompt,
+      prompt: null,
       sourceUrl,
       cacheUrl,
       thumbnailUrl: null,

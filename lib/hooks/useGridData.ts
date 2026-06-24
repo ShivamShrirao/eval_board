@@ -34,7 +34,6 @@ export interface GridRow {
   key: string;
   label: string;
   filename: string;
-  prompt?: string | null;
   createdAt: string;
   cells: GridCell[];
 }
@@ -83,18 +82,15 @@ export function useGridData(config: GridViewConfig) {
         continue;
       }
 
-      const keySource =
-        config.breakdownBy === "prompt" && item.prompt ? item.prompt : getBaseFilename(item.filename);
+      const keySource = getBaseFilename(item.filename);
       const key = keySource || item.id;
-      const label =
-        (config.breakdownBy === "prompt" && item.prompt) || getBaseFilename(item.filename) || item.filename || key;
+      const label = getBaseFilename(item.filename) || item.filename || key;
 
       if (!map.has(key)) {
         map.set(key, {
           key,
           label,
           filename: item.filename,
-          prompt: item.prompt,
           createdAt: item.createdAt,
           cells: columnModelIds.map(() => ({ artifact: null }))
         });

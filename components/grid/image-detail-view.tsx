@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import useSWR from "swr";
 import { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
@@ -20,6 +20,65 @@ const fetchImageDetail = async (url: string): Promise<{ item: ImageArtifactDTO }
   return res.json();
 };
 
+const formatPrompt = (prompt?: string | null) => {
+  if (!prompt?.trim()) {
+    return null;
+  }
+
+  try {
+    return {
+      value: JSON.stringify(JSON.parse(prompt), null, 2),
+      isJson: true
+    };
+  } catch {
+    return {
+      value: prompt,
+      isJson: false
+    };
+  }
+};
+
+const JSON_TOKEN_PATTERN =
+  /("(?:\\u[a-fA-F0-9]{4}|\\[^u]|[^\\"])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null|[{}\[\]:,])/g;
+
+const renderJsonSyntax = (json: string): ReactNode[] => {
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of json.matchAll(JSON_TOKEN_PATTERN)) {
+    const index = match.index ?? 0;
+    const token = match[0];
+
+    if (index > lastIndex) {
+      nodes.push(json.slice(lastIndex, index));
+    }
+
+    const nextChar = json.slice(index + token.length).trimStart()[0];
+    const className = token.startsWith("\"")
+      ? nextChar === ":"
+        ? "font-semibold text-sky-700"
+        : "text-emerald-700"
+      : token === "true" || token === "false" || token === "null"
+        ? "font-semibold text-amber-700"
+        : /^-?\d/.test(token)
+          ? "text-violet-700"
+          : "text-slate-500";
+
+    nodes.push(
+      <span key={`${index}-${token}`} className={className}>
+        {token}
+      </span>
+    );
+    lastIndex = index + token.length;
+  }
+
+  if (lastIndex < json.length) {
+    nodes.push(json.slice(lastIndex));
+  }
+
+  return nodes;
+};
+
 export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailViewProps) {
   const { data: detail } = useSWR(
     artifact.metadata ? null : `/api/images/${artifact.id}`,
@@ -30,6 +89,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
     }
   );
   const displayArtifact = detail?.item ?? artifact;
+  const prompt = formatPrompt(displayArtifact.prompt);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -139,16 +199,6 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
             </h2>
 
             <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="space-y-2">
-                <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
-                  Prompt
-                </div>
-                <div className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] bg-white p-3 rounded-lg border border-slate-200">
-                  {displayArtifact.prompt || <span className="italic text-slate-500">No prompt</span>}
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
                   Details
@@ -183,6 +233,26 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
+                  Prompt
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  {prompt ? (
+                    <pre
+                      className={cn(
+                        "text-sm text-slate-900 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
+                        prompt.isJson && "font-mono text-xs"
+                      )}
+                    >
+                      {prompt.isJson ? renderJsonSyntax(prompt.value) : prompt.value}
+                    </pre>
+                  ) : (
+                    <span className="text-sm italic text-slate-500">No prompt</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

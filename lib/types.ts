@@ -11,14 +11,12 @@ export interface GridViewConfig {
   version: 1;
   columns: GridColumnConfig[];
   datasetId?: UUID | null;
-  breakdownBy?: "filename" | "prompt";
   sortBy?: "createdAt" | "filename";
 }
 
 export const DEFAULT_GRID_VIEW: GridViewConfig = {
   version: 1,
   columns: [],
-  breakdownBy: "filename",
   sortBy: "filename"
 };
 

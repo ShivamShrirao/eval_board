@@ -11,6 +11,5 @@ export const gridConfigSchema = z.object({
   version: z.literal(1),
   columns: z.array(gridColumnSchema).max(12),
   datasetId: z.string().uuid().nullable().optional(),
-  breakdownBy: z.enum(["filename", "prompt"]).optional(),
   sortBy: z.enum(["createdAt", "filename"]).optional()
 });
