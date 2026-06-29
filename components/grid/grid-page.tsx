@@ -111,22 +111,17 @@ export function GridPage() {
     scrollMargin
   });
 
-  const columnAspects = useMemo(() => {
-    return config.columns.map((_, colIdx) => {
-      for (const row of rows) {
-        const a = row.cells[colIdx]?.artifact;
-        if (a?.width && a?.height) {
-          return a.width / a.height;
-        }
-      }
-      return 1;
-    });
-  }, [config.columns, rows]);
-
   const gridTemplateColumns = useMemo(() => {
-    if (columnAspects.length === 0) return "";
-    return columnAspects.map((a) => `minmax(0, ${a}fr)`).join(" ");
-  }, [columnAspects]);
+    if (config.columns.length === 0) return "";
+    return `repeat(${config.columns.length}, minmax(0, 1fr))`;
+  }, [config.columns.length]);
+
+  const getArtifactAspect = (artifact: ImageArtifactDTO | null) => {
+    if (artifact?.width && artifact.height) {
+      return artifact.width / artifact.height;
+    }
+    return 1;
+  };
 
   const renderRow = (index: number) => {
     const row = rows[index];
@@ -138,7 +133,7 @@ export function GridPage() {
           <GridCell
             key={`${row.key}-${columnIndex}`}
             artifact={cell.artifact}
-            aspect={columnAspects[columnIndex] ?? 1}
+            aspect={getArtifactAspect(cell.artifact)}
             onClick={() => {
               if (cell.artifact) {
                 setSelectedLocation({ rowIndex: index, colIndex: columnIndex });
@@ -300,7 +295,7 @@ function GridCell({ artifact, aspect, onClick }: GridCellProps) {
   return artifact ? (
     <div
       onClick={onClick}
-      className="relative w-full overflow-hidden bg-black cursor-pointer"
+      className="relative w-full self-start overflow-hidden bg-black cursor-pointer"
       style={{ aspectRatio: String(aspect) }}
     >
       <ArtifactImage
@@ -310,8 +305,7 @@ function GridCell({ artifact, aspect, onClick }: GridCellProps) {
     </div>
   ) : (
     <div
-      className="flex w-full items-center justify-center bg-black/60 text-xs text-slate-600"
-      style={{ aspectRatio: String(aspect) }}
+      className="flex h-full min-h-[80px] w-full items-center justify-center bg-black/60 text-xs text-slate-600"
     >
       —
     </div>
