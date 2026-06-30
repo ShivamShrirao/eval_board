@@ -24,9 +24,10 @@ interface ArtifactImageProps {
   className?: string;
   style?: React.CSSProperties;
   onClick?: (event: React.MouseEvent<HTMLImageElement>) => void;
+  onNaturalSize?: (width: number, height: number) => void;
 }
 
-export function ArtifactImage({ artifact, alt, className, style, onClick }: ArtifactImageProps) {
+export function ArtifactImage({ artifact, alt, className, style, onClick, onNaturalSize }: ArtifactImageProps) {
   const [useFallback, setUseFallback] = useState(false);
   const [trackedArtifactId, setTrackedArtifactId] = useState(artifact.id);
 
@@ -37,7 +38,12 @@ export function ArtifactImage({ artifact, alt, className, style, onClick }: Arti
 
   const src = useFallback && artifact.cacheUrl ? artifact.cacheUrl : artifact.sourceUrl;
 
-  const handleLoad = () => {
+  const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      onNaturalSize?.(naturalWidth, naturalHeight);
+    }
+
     if (!useFallback && artifact.cacheUrl) {
       warmCache(artifact.id);
     }

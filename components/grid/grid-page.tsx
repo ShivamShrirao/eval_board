@@ -32,6 +32,19 @@ export function GridPage() {
   const { rows, isLoading } = useGridData(config);
 
   const [selectedLocation, setSelectedLocation] = useState<{ rowIndex: number; colIndex: number } | null>(null);
+  const [measuredAspects, setMeasuredAspects] = useState<Record<string, number>>({});
+
+  const handleNaturalSize = useCallback((artifactId: string, width: number, height: number) => {
+    if (width <= 0 || height <= 0) return;
+    const aspect = width / height;
+
+    setMeasuredAspects((current) => {
+      if (Math.abs((current[artifactId] ?? 0) - aspect) < 0.001) {
+        return current;
+      }
+      return { ...current, [artifactId]: aspect };
+    });
+  }, []);
 
   const handleNavigate = (direction: "up" | "down" | "left" | "right") => {
     if (!selectedLocation) return;
@@ -117,6 +130,9 @@ export function GridPage() {
   }, [config.columns.length]);
 
   const getArtifactAspect = (artifact: ImageArtifactDTO | null) => {
+    if (artifact && measuredAspects[artifact.id]) {
+      return measuredAspects[artifact.id];
+    }
     if (artifact?.width && artifact.height) {
       return artifact.width / artifact.height;
     }
@@ -134,6 +150,7 @@ export function GridPage() {
             key={`${row.key}-${columnIndex}`}
             artifact={cell.artifact}
             aspect={getArtifactAspect(cell.artifact)}
+            onNaturalSize={handleNaturalSize}
             onClick={() => {
               if (cell.artifact) {
                 setSelectedLocation({ rowIndex: index, colIndex: columnIndex });
@@ -289,9 +306,10 @@ interface GridCellProps {
   artifact: ImageArtifactDTO | null;
   aspect: number;
   onClick?: () => void;
+  onNaturalSize?: (artifactId: string, width: number, height: number) => void;
 }
 
-function GridCell({ artifact, aspect, onClick }: GridCellProps) {
+function GridCell({ artifact, aspect, onClick, onNaturalSize }: GridCellProps) {
   return artifact ? (
     <div
       onClick={onClick}
@@ -301,6 +319,7 @@ function GridCell({ artifact, aspect, onClick }: GridCellProps) {
       <ArtifactImage
         artifact={artifact}
         className="absolute inset-0 h-full w-full object-contain"
+        onNaturalSize={(width, height) => onNaturalSize?.(artifact.id, width, height)}
       />
     </div>
   ) : (
