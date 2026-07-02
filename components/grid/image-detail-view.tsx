@@ -79,6 +79,57 @@ const renderJsonSyntax = (json: string): ReactNode[] => {
   return nodes;
 };
 
+const METADATA_FIELD_ORDER = [
+  "model",
+  "prompt_id",
+  "edit_id",
+  "input_id",
+  "output_id",
+  "edit_category",
+  "data_type",
+  "product_name",
+  "caption",
+  "short_description",
+  "prompt_1",
+  "prompt_2",
+  "prompt_3",
+  "structured_prompt",
+  "edit_instruction",
+  "seed",
+  "steps",
+  "guidance_scale",
+  "cfg",
+  "cfg_scale",
+  "sampler",
+  "scheduler",
+  "is_product_edit",
+  "is_significant_edit",
+  "transformation_type",
+  "significance_reason",
+  "classification_reason",
+  "is_complex_bg",
+  "bg_type",
+  "s3_bucket",
+  "s3_key",
+  "mask_bucket",
+  "mask_key",
+  "input_mask_bucket",
+  "input_mask_key"
+];
+
+const METADATA_FIELD_RANK = new Map(METADATA_FIELD_ORDER.map((key, index) => [key, index]));
+
+const sortMetadataEntries = ([keyA]: [string, unknown], [keyB]: [string, unknown]) => {
+  const rankA = METADATA_FIELD_RANK.get(keyA);
+  const rankB = METADATA_FIELD_RANK.get(keyB);
+
+  if (rankA !== undefined || rankB !== undefined) {
+    return (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
+  }
+
+  return keyA.localeCompare(keyB, undefined, { numeric: true, sensitivity: "base" });
+};
+
 export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailViewProps) {
   const shouldLoadDetail = !artifact.metadata;
   const { data: detail, isLoading: isLoadingDetail } = useSWR(
@@ -133,7 +184,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
 
   // Format metadata for display
   const metadataEntries = displayArtifact.metadata
-    ? Object.entries(displayArtifact.metadata).map(([key, value]) => ({
+    ? Object.entries(displayArtifact.metadata).sort(sortMetadataEntries).map(([key, value]) => ({
         key,
         value: typeof value === "object" ? JSON.stringify(value) : String(value),
       }))
