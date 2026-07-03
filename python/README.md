@@ -33,6 +33,24 @@ client.ingest(
 )
 ```
 
+Text-only models can be ingested through the same API by marking the model and items as `text`:
+
+```python
+images = [
+    ImageSpec(
+        filename="sample-001",
+        type="text",
+        content="replace the background with a clean white studio setup",
+    )
+]
+
+client.ingest(
+    model={"name": "edit-instructions", "type": "text"},
+    dataset={"name": "product-edits"},
+    images=images,
+)
+```
+
 ## CLI
 ```bash
 eval-board ingest \
@@ -48,6 +66,7 @@ eval-board ingest \
   "images": [
     {
       "filename": "sample.png",
+      "type": "image",
       "source_url": "s3://bucket/run123/sample.png",
       "prompt": "a cat reading a book",
       "width": 1024,

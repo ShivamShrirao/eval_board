@@ -38,6 +38,10 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
 
   const src = useFallback && artifact.cacheUrl ? artifact.cacheUrl : artifact.sourceUrl;
 
+  if (!src) {
+    return null;
+  }
+
   const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = event.currentTarget;
     if (naturalWidth > 0 && naturalHeight > 0) {

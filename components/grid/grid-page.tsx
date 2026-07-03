@@ -87,7 +87,7 @@ export function GridPage() {
       models.map((model) => ({
         value: model.id,
         label: model.name,
-        description: `${model.datasetCount} datasets • ${model.imageCount} images`
+        description: `${model.datasetCount} datasets • ${model.imageCount} artifacts • ${model.type}`
       })),
     [models]
   );
@@ -310,7 +310,31 @@ interface GridCellProps {
 }
 
 function GridCell({ artifact, aspect, onClick, onNaturalSize }: GridCellProps) {
-  return artifact ? (
+  if (!artifact) {
+    return (
+      <div
+        className="flex h-full min-h-[80px] w-full items-center justify-center bg-black/60 text-xs text-slate-600"
+      >
+        —
+      </div>
+    );
+  }
+
+  if (artifact.type === "text") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex min-h-[160px] w-full cursor-pointer flex-col items-center justify-center bg-slate-950 px-5 py-4 text-center hover:bg-slate-900"
+      >
+        <span className="max-h-[360px] overflow-auto whitespace-pre-wrap text-lg leading-relaxed text-slate-100 [overflow-wrap:anywhere]">
+          {artifact.content || "No text content"}
+        </span>
+      </button>
+    );
+  }
+
+  return (
     <div
       onClick={onClick}
       className="relative w-full self-start overflow-hidden bg-black cursor-pointer"
@@ -321,12 +345,6 @@ function GridCell({ artifact, aspect, onClick, onNaturalSize }: GridCellProps) {
         className="absolute inset-0 h-full w-full object-contain"
         onNaturalSize={(width, height) => onNaturalSize?.(artifact.id, width, height)}
       />
-    </div>
-  ) : (
-    <div
-      className="flex h-full min-h-[80px] w-full items-center justify-center bg-black/60 text-xs text-slate-600"
-    >
-      —
     </div>
   );
 }

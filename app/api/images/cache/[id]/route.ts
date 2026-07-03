@@ -21,6 +21,10 @@ export async function GET(
   }
 
   const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
+  if (!artifact.sourceUrl) {
+    return NextResponse.json({ error: "Artifact has no image source" }, { status: 400 });
+  }
+
   const location = resolveS3Location(artifact.sourceUrl, metadata);
   if (!location) {
     return NextResponse.json({ error: "Artifact is not S3-backed" }, { status: 400 });

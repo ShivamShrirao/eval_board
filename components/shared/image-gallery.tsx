@@ -19,13 +19,19 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           className="flex flex-col gap-2 rounded-2xl border border-slate-900/70 bg-black/60 p-3 text-left shadow-inner shadow-black/20"
         >
           <div className="relative overflow-hidden rounded-2xl bg-[#101014] ring-1 ring-white/5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image.sourceUrl}
-              alt={image.prompt ?? image.filename}
-              loading="lazy"
-              className="mx-auto block h-auto w-full object-contain"
-            />
+            {image.type === "text" ? (
+              <pre className="min-h-[180px] max-h-[360px] overflow-auto whitespace-pre-wrap p-4 text-sm leading-relaxed text-slate-100 [overflow-wrap:anywhere]">
+                {image.content || "No text content"}
+              </pre>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image.sourceUrl ?? ""}
+                alt={image.prompt ?? image.filename}
+                loading="lazy"
+                className="mx-auto block h-auto w-full object-contain"
+              />
+            )}
           </div>
           <div className="text-xs text-slate-300">
             <div className="font-medium text-slate-100">{image.filename}</div>

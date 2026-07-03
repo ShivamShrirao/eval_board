@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import typer
 from rich.console import Console
@@ -15,25 +15,36 @@ console = Console()
 app = typer.Typer(help="Eval Board ingestion CLI")
 
 
-def _load_manifest(path: Path) -> List[ImageSpec]:
+def _load_manifest(path: Path) -> Tuple[List[ImageSpec], str]:
     data = json.loads(path.read_text())
     images = data.get("images", [])
+    default_type = data.get("model", {}).get("type") or data.get("model_type") or "image"
+    if default_type not in {"image", "text"}:
+        raise ValueError(f"Manifest has invalid model type {default_type!r}")
     specs: List[ImageSpec] = []
     for idx, item in enumerate(images, start=1):
         source = item.get("source_url") or item.get("sourceUrl")
-        if not source:
+        item_type = item.get("type") or default_type
+        content = item.get("content") or item.get("text")
+        if item_type not in {"image", "text"}:
+            raise ValueError(f"Manifest entry {idx} has invalid type {item_type!r}")
+        if item_type == "image" and not source:
             raise ValueError(f"Manifest entry {idx} missing 'source_url'")
+        if item_type == "text" and not content:
+            raise ValueError(f"Manifest entry {idx} missing 'content'")
         specs.append(
             ImageSpec(
                 filename=item["filename"],
                 source_url=source,
+                type=item_type,
+                content=content,
                 prompt=item.get("prompt"),
                 metadata=item.get("metadata") or {},
                 width=item.get("width"),
                 height=item.get("height"),
             )
         )
-    return specs
+    return specs, default_type
 
 
 @app.command()
@@ -46,6 +57,7 @@ def ingest(
         help="Site password (sent as x-eval-board-password). Defaults to EVAL_BOARD_PASSWORD env.",
     ),
     model: str = typer.Option(..., help="Model name to register"),
+    model_type: Optional[str] = typer.Option(None, help="Artifact type for this model: image or text."),
     dataset: str = typer.Option(..., help="Dataset name to register"),
     manifest: Optional[Path] = typer.Option(None, exists=True, file_okay=True, dir_okay=False),
     image_prefix: Optional[List[str]] = typer.Option(
@@ -63,12 +75,21 @@ def ingest(
 ) -> None:
     if not manifest and not image_prefix:
         raise typer.BadParameter("Provide either --manifest or at least one --image-prefix.")
+    if model_type is not None and model_type not in {"image", "text"}:
+        raise typer.BadParameter("--model-type must be either 'image' or 'text'.")
 
     images: List[ImageSpec] = []
+    resolved_model_type = model_type or "image"
 
     if manifest:
         console.log(f"Loading manifest from [bold]{manifest}[/]")
-        images.extend(_load_manifest(manifest))
+        manifest_images, manifest_model_type = _load_manifest(manifest)
+        images.extend(manifest_images)
+        if model_type is None:
+            resolved_model_type = manifest_model_type
+
+    if resolved_model_type == "text" and image_prefix:
+        raise typer.BadParameter("--image-prefix can only be used with image models.")
 
     if image_prefix:
         console.log("Scanning S3 prefixes...")
@@ -84,19 +105,19 @@ def ingest(
         console.print("[red]No images discovered; aborting.[/]")
         raise typer.Exit(code=1)
 
-    table = Table(title="Images to ingest")
+    table = Table(title="Artifacts to ingest")
     table.add_column("Filename")
-    table.add_column("Source URL")
+    table.add_column("Source URL / Content")
     table.add_column("Prompt", overflow="fold")
     for image in images[:10]:
-        table.add_row(image.filename, image.source_url, image.prompt or "")
+        table.add_row(image.filename, image.source_url or image.content or "", image.prompt or "")
     if len(images) > 10:
         table.caption = f"Showing first 10 of {len(images)} images."
     console.print(table)
 
     with EvalBoardClient(base_url=base_url, api_key=api_key, password=password) as client:
         payload = client.ingest(
-            model=ModelDescriptor(name=model),
+            model=ModelDescriptor(name=model, type=resolved_model_type),
             dataset=DatasetDescriptor(name=dataset),
             images=images,
             dry_run=dry_run,

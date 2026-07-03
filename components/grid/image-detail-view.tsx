@@ -81,6 +81,10 @@ const renderJsonSyntax = (json: string): ReactNode[] => {
 
 const METADATA_FIELD_ORDER = [
   "model",
+  "output_url",
+  "record_id",
+  "source_dataset",
+  "source_url",
   "prompt_id",
   "edit_id",
   "input_id",
@@ -232,11 +236,22 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
           </button>
 
-          <ArtifactImage
-            artifact={displayArtifact}
-            className="absolute inset-0 h-full w-full object-contain shadow-2xl shadow-black/50"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {displayArtifact.type === "text" ? (
+            <div
+              className="absolute inset-0 flex items-center justify-center overflow-auto p-10 text-center text-slate-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <pre className="whitespace-pre-wrap text-2xl leading-relaxed [overflow-wrap:anywhere]">
+                {displayArtifact.content || "No text content"}
+              </pre>
+            </div>
+          ) : (
+            <ArtifactImage
+              artifact={displayArtifact}
+              className="absolute inset-0 h-full w-full object-contain shadow-2xl shadow-black/50"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
 
         {/* Sidebar */}
@@ -256,6 +271,8 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   Details
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm text-slate-900 bg-white p-3 rounded-lg border border-slate-200 [&>span]:min-w-0 [&>span]:break-words">
+                  <span className="text-slate-600 text-xs">Type</span>
+                  <span className="capitalize">{displayArtifact.type}</span>
                   {displayArtifact.width && displayArtifact.height && (
                     <>
                       <span className="text-slate-600 text-xs">Dimensions</span>
@@ -266,6 +283,19 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   <span>{new Date(displayArtifact.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
+
+              {displayArtifact.type === "text" && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
+                    Content
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                    <pre className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
+                      {displayArtifact.content || "No text content"}
+                    </pre>
+                  </div>
+                </div>
+              )}
 
               {/* Metadata */}
               {metadataEntries.length > 0 && (

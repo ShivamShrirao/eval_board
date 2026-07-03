@@ -82,6 +82,7 @@ export async function listModels({
       id: model.id,
       name: model.name,
       slug: model.slug,
+      type: model.type,
       description: model.description,
       createdAt: model.createdAt.toISOString(),
       datasetCount: datasetIds.size,
@@ -206,20 +207,25 @@ export async function mapArtifactsToDTO(artifacts: ImageArtifact[]): Promise<Ima
 function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifactDTO[]> {
   return Promise.all(artifacts.map(async (artifact) => {
     const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
-    const s3Location = resolveS3Location(artifact.sourceUrl, metadata);
+    const s3Location = artifact.sourceUrl ? resolveS3Location(artifact.sourceUrl, metadata) : null;
     const cacheUrl = s3Location ? `/api/images/cache/${artifact.id}` : null;
-    const sourceUrl = await resolveImageSourceUrl({
-      sourceUrl: artifact.sourceUrl,
-      metadata
-    });
+    const sourceUrl =
+      artifact.type === "image" && artifact.sourceUrl
+        ? await resolveImageSourceUrl({
+            sourceUrl: artifact.sourceUrl,
+            metadata
+          })
+        : null;
 
     return {
       id: artifact.id,
       modelId: artifact.modelId,
       datasetId: artifact.datasetId,
       filename: artifact.filename,
+      type: artifact.type,
       prompt: null,
       sourceUrl,
+      content: artifact.type === "text" ? artifact.content : null,
       cacheUrl,
       thumbnailUrl: null,
       width: artifact.width,
@@ -235,11 +241,13 @@ async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactD
   const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
 
   const [sourceUrl, thumbnailUrl] = await Promise.all([
-    resolveImageSourceUrl({
-      sourceUrl: artifact.sourceUrl,
-      metadata
-    }),
-    artifact.thumbnailUrl
+    artifact.type === "image" && artifact.sourceUrl
+      ? resolveImageSourceUrl({
+          sourceUrl: artifact.sourceUrl,
+          metadata
+        })
+      : Promise.resolve(null),
+    artifact.type === "image" && artifact.thumbnailUrl
       ? resolveImageSourceUrl({
           sourceUrl: artifact.thumbnailUrl,
           metadata
@@ -247,7 +255,7 @@ async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactD
       : Promise.resolve(null)
   ]);
 
-  const s3Location = resolveS3Location(artifact.sourceUrl, metadata);
+  const s3Location = artifact.sourceUrl ? resolveS3Location(artifact.sourceUrl, metadata) : null;
   const cacheUrl = s3Location ? `/api/images/cache/${artifact.id}` : null;
 
   return {
@@ -255,8 +263,10 @@ async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactD
     modelId: artifact.modelId,
     datasetId: artifact.datasetId,
     filename: artifact.filename,
+    type: artifact.type,
     prompt: artifact.prompt,
     sourceUrl,
+    content: artifact.content,
     cacheUrl,
     thumbnailUrl,
     width: artifact.width,
@@ -378,6 +388,7 @@ export async function updateModelName(id: string, name: string): Promise<ModelSu
       id: updated.id,
       name: updated.name,
       slug: updated.slug,
+      type: updated.type,
       description: updated.description,
       createdAt: updated.createdAt.toISOString(),
       datasetCount: datasetIds.size,
@@ -418,6 +429,7 @@ export async function getModelDetail(id: string): Promise<ModelSummary | null> {
     id: model.id,
     name: model.name,
     slug: model.slug,
+    type: model.type,
     description: model.description,
     createdAt: model.createdAt.toISOString(),
     datasetCount: datasetIds.size,

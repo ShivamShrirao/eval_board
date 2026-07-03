@@ -201,14 +201,21 @@ export function ImageLightbox({
               </>
             )}
 
-            {/* The image itself */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image.sourceUrl}
-              alt={image.prompt ?? image.filename}
-              className="max-h-full max-w-full rounded-lg object-contain shadow-2xl shadow-black/50"
-              style={{ maxHeight: "calc(100vh - 4rem)" }}
-            />
+            {image.type === "text" ? (
+              <div className="max-h-full max-w-full overflow-auto rounded-lg bg-slate-950 p-8 shadow-2xl shadow-black/50">
+                <pre className="whitespace-pre-wrap text-lg leading-relaxed text-slate-100 [overflow-wrap:anywhere]">
+                  {image.content || "No text content"}
+                </pre>
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image.sourceUrl ?? ""}
+                alt={image.prompt ?? image.filename}
+                className="max-h-full max-w-full rounded-lg object-contain shadow-2xl shadow-black/50"
+                style={{ maxHeight: "calc(100vh - 4rem)" }}
+              />
+            )}
           </div>
         </div>
 
@@ -273,7 +280,15 @@ export function ImageLightbox({
               )}
 
               {/* Dimensions */}
-              {formatDimensions() && (
+              {image.type === "text" && (
+                <MetadataSection label="Content">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200 [overflow-wrap:anywhere]">
+                    {image.content || "No text content"}
+                  </p>
+                </MetadataSection>
+              )}
+
+              {image.type === "image" && formatDimensions() && (
                 <MetadataSection label="Dimensions">
                   <p className="font-mono text-sm text-slate-200">{formatDimensions()}</p>
                 </MetadataSection>

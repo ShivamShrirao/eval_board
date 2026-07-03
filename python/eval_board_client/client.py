@@ -4,7 +4,7 @@ import dataclasses
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, Mapping, MutableMapping, Optional
+from typing import Any, Dict, Iterable, Literal, Mapping, MutableMapping, Optional
 
 import requests
 
@@ -28,6 +28,7 @@ def _isoformat(dt: Optional[datetime]) -> Optional[str]:
 class ModelDescriptor:
     name: str
     slug: Optional[str] = None
+    type: Literal["image", "text"] = "image"
     description: Optional[str] = None
 
 
@@ -40,7 +41,9 @@ class DatasetDescriptor:
 @dataclass
 class ImageSpec:
     filename: str
-    source_url: str
+    source_url: Optional[str] = None
+    type: Literal["image", "text"] = "image"
+    content: Optional[str] = None
     prompt: Optional[str] = None
     thumbnail_url: Optional[str] = None
     width: Optional[int] = None
@@ -51,7 +54,9 @@ class ImageSpec:
     def to_payload(self) -> Dict[str, Any]:
         payload = {
             "filename": self.filename,
+            "type": self.type,
             "sourceUrl": self.source_url,
+            "content": self.content,
             "prompt": self.prompt,
             "thumbnailUrl": self.thumbnail_url,
             "width": self.width,

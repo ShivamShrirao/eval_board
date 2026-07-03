@@ -20,9 +20,13 @@ const sourceUrlSchema = z
     }
   }, "sourceUrl must be a valid URL or s3:// URI");
 
+const artifactTypeSchema = z.enum(["image", "text"]);
+
 const imageSchema = z.object({
   filename: z.string().min(1, "filename is required"),
-  sourceUrl: sourceUrlSchema,
+  type: artifactTypeSchema.optional().nullable(),
+  sourceUrl: sourceUrlSchema.optional().nullable(),
+  content: z.string().optional().nullable(),
   prompt: z.string().optional().nullable(),
   thumbnailUrl: sourceUrlSchema.optional().nullable(),
   width: z.number().int().min(1).max(16384).optional().nullable(),
@@ -35,6 +39,7 @@ const ingestSchema = z.object({
   model: z.object({
     name: z.string().min(1, "model name is required"),
     slug: z.string().optional().nullable(),
+    type: artifactTypeSchema.optional().nullable(),
     description: z.string().optional().nullable()
   }),
   dataset: z.object({
@@ -42,6 +47,28 @@ const ingestSchema = z.object({
     slug: z.string().optional().nullable()
   }),
   images: z.array(imageSchema).max(2000)
+}).superRefine((payload, ctx) => {
+  payload.images.forEach((image, index) => {
+    const type = image.type ?? payload.model.type ?? (!image.sourceUrl && image.content ? "text" : "image");
+    if (type === "text") {
+      if (!image.content?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: "content is required for text artifacts",
+          path: ["images", index, "content"]
+        });
+      }
+      return;
+    }
+
+    if (!image.sourceUrl) {
+      ctx.addIssue({
+        code: "custom",
+        message: "sourceUrl is required for image artifacts",
+        path: ["images", index, "sourceUrl"]
+      });
+    }
+  });
 });
 
 export async function POST(request: Request) {

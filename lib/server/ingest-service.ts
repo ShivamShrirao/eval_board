@@ -4,9 +4,12 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
 import { removeCachedFiles } from "./image-cache";
 
+type ArtifactType = "image" | "text";
+
 export interface IngestModelInput {
   name: string;
   slug?: string | null;
+  type?: ArtifactType | null;
   description?: string | null;
 }
 
@@ -17,7 +20,9 @@ export interface IngestDatasetInput {
 
 export interface IngestImageInput {
   filename: string;
-  sourceUrl: string;
+  type?: ArtifactType | null;
+  sourceUrl?: string | null;
+  content?: string | null;
   prompt?: string | null;
   thumbnailUrl?: string | null;
   width?: number | null;
@@ -46,15 +51,18 @@ const slugify = (value: string) =>
     .slice(0, 60);
 
 export async function ingestPayload(payload: IngestPayload): Promise<IngestResult> {
+  const modelType = payload.model.type ?? inferModelType(payload.images);
   const model = await prisma.model.upsert({
     where: { name: payload.model.name },
     create: {
       name: payload.model.name,
       slug: payload.model.slug ?? slugify(payload.model.name),
+      type: modelType,
       description: payload.model.description ?? null
     },
     update: {
       slug: payload.model.slug ?? undefined,
+      type: payload.model.type ?? (modelType === "text" ? "text" : undefined),
       description: payload.model.description ?? undefined
     }
   });
@@ -74,8 +82,9 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
     return { modelId: model.id, datasetId: dataset.id, count: 0 };
   }
 
-  const operations = payload.images.map((image) =>
-    prisma.imageArtifact.upsert({
+  const operations = payload.images.map((image) => {
+    const type = image.type ?? modelType;
+    return prisma.imageArtifact.upsert({
       where: {
         modelId_datasetId_filename: {
           modelId: model.id,
@@ -87,7 +96,9 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
         modelId: model.id,
         datasetId: dataset.id,
         filename: image.filename,
-        sourceUrl: image.sourceUrl,
+        type,
+        sourceUrl: image.sourceUrl ?? null,
+        content: image.content ?? null,
         prompt: image.prompt ?? null,
         promptHash: image.prompt ? slugify(image.prompt) : null,
         thumbnailUrl: image.thumbnailUrl ?? null,
@@ -97,7 +108,9 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
         capturedAt: normalizeCapturedAt(image.capturedAt)
       },
       update: {
-        sourceUrl: image.sourceUrl,
+        type,
+        sourceUrl: image.sourceUrl ?? null,
+        content: image.content ?? null,
         prompt: image.prompt ?? null,
         promptHash: image.prompt ? slugify(image.prompt) : null,
         thumbnailUrl: image.thumbnailUrl ?? null,
@@ -107,8 +120,8 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
         capturedAt: normalizeCapturedAt(image.capturedAt),
         updatedAt: new Date()
       }
-    })
-  );
+    });
+  });
 
   const result = await prisma.$transaction(operations);
 
@@ -134,3 +147,13 @@ const normalizeMetadata = (
   value: Record<string, unknown> | null | undefined
 ): Prisma.InputJsonValue | undefined =>
   value && Object.keys(value).length ? (value as Prisma.InputJsonValue) : undefined;
+
+const inferModelType = (images: IngestImageInput[]): ArtifactType => {
+  if (
+    images.length > 0 &&
+    images.every((image) => image.type === "text" || (!image.sourceUrl && Boolean(image.content)))
+  ) {
+    return "text";
+  }
+  return "image";
+};

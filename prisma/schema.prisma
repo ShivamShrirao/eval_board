@@ -7,10 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ArtifactType {
+  image
+  text
+}
+
 model Model {
   id             String          @id @default(uuid())
   name           String          @unique
   slug           String          @unique
+  type           ArtifactType    @default(image)
   description    String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
@@ -35,9 +41,11 @@ model ImageArtifact {
   modelId    String
   datasetId  String
   filename   String
+  type       ArtifactType @default(image)
   prompt     String?
   promptHash String?
-  sourceUrl  String
+  sourceUrl  String?
+  content    String?
   thumbnailUrl String?
   width        Int?
   height       Int?

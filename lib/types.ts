@@ -1,4 +1,5 @@
 export type UUID = string;
+export type ArtifactType = "image" | "text";
 
 export interface GridColumnConfig {
   id: string;
@@ -24,6 +25,7 @@ export interface ModelSummary {
   id: UUID;
   name: string;
   slug: string;
+  type: ArtifactType;
   description?: string | null;
   createdAt: string;
   datasetCount: number;
@@ -44,8 +46,10 @@ export interface ImageArtifactDTO {
   modelId: UUID;
   datasetId: UUID;
   filename: string;
+  type: ArtifactType;
   prompt?: string | null;
-  sourceUrl: string;
+  sourceUrl?: string | null;
+  content?: string | null;
   cacheUrl?: string | null;
   thumbnailUrl?: string | null;
   width?: number | null;

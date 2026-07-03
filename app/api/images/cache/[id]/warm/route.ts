@@ -24,6 +24,10 @@ export async function POST(
   }
 
   const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
+  if (!artifact.sourceUrl) {
+    return new NextResponse(null, { status: 204 });
+  }
+
   const location = resolveS3Location(artifact.sourceUrl, metadata);
   if (!location) {
     return new NextResponse(null, { status: 204 });
