@@ -17,7 +17,7 @@ interface PageProps {
 export default async function Home({ searchParams }: PageProps) {
   const viewId = searchParams?.view;
   const tabParam = searchParams?.tab;
-  const initialTab = tabParam === "models" || tabParam === "datasets" ? tabParam : "grid";
+  const initialTab = tabParam === "models" || tabParam === "benchmarks" ? tabParam : "grid";
 
   const initial = viewId ? await getViewConfig(viewId) : null;
   const initialConfig = initial?.config ?? DEFAULT_GRID_VIEW;

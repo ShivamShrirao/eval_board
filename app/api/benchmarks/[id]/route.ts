@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { deleteDatasetById, EntityNotFoundError } from "../../../../lib/server/model-service";
+import { deleteBenchmarkById, EntityNotFoundError } from "../../../../lib/server/model-service";
 
 const paramsSchema = z.object({
-  id: z.string().uuid("Invalid dataset id")
+  id: z.string().uuid("Invalid benchmark id")
 });
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +21,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   }
 
   try {
-    const result = await deleteDatasetById(parsed.data.id);
+    const result = await deleteBenchmarkById(parsed.data.id);
     return NextResponse.json(
       {
         deletedArtifacts: result.deletedArtifacts
@@ -33,7 +33,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
 
-    console.error("Failed to delete dataset", error);
-    return NextResponse.json({ error: "Failed to delete dataset" }, { status: 500 });
+    console.error("Failed to delete benchmark", error);
+    return NextResponse.json({ error: "Failed to delete benchmark" }, { status: 500 });
   }
 }

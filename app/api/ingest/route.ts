@@ -35,6 +35,11 @@ const imageSchema = z.object({
   capturedAt: z.string().datetime().optional().nullable()
 });
 
+const benchmarkSchema = z.object({
+  name: z.string().min(1, "benchmark name is required"),
+  slug: z.string().optional().nullable()
+});
+
 const ingestSchema = z.object({
   model: z.object({
     name: z.string().min(1, "model name is required"),
@@ -42,12 +47,20 @@ const ingestSchema = z.object({
     type: artifactTypeSchema.optional().nullable(),
     description: z.string().optional().nullable()
   }),
-  dataset: z.object({
-    name: z.string().min(1, "dataset name is required"),
-    slug: z.string().optional().nullable()
-  }),
+  benchmark: benchmarkSchema.optional(),
+  // Deprecated: legacy alias for `benchmark`, kept so existing external Python
+  // ingest scripts keep working. Normalized to `benchmark` below.
+  dataset: benchmarkSchema.optional(),
   images: z.array(imageSchema).max(2000)
 }).superRefine((payload, ctx) => {
+  if (!payload.benchmark && !payload.dataset) {
+    ctx.addIssue({
+      code: "custom",
+      message: "benchmark is required",
+      path: ["benchmark"]
+    });
+  }
+
   payload.images.forEach((image, index) => {
     const type = image.type ?? payload.model.type ?? (!image.sourceUrl && image.content ? "text" : "image");
     if (type === "text") {
@@ -85,7 +98,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await ingestPayload(parsed.data);
+  const { dataset: legacyBenchmark, benchmark, ...rest } = parsed.data;
+  if (!benchmark && legacyBenchmark) {
+    console.warn(
+      "[ingest] Deprecated payload key `dataset` received; use `benchmark` instead. " +
+        "The `dataset` alias will be removed in a future release."
+    );
+  }
+
+  const result = await ingestPayload({
+    ...rest,
+    benchmark: benchmark ?? legacyBenchmark!
+  });
 
   return NextResponse.json(
     {

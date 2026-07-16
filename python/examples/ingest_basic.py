@@ -8,7 +8,7 @@ from typing import Any, Dict, Iterator, List
 import boto3
 from botocore.config import Config
 
-from eval_board_client import DatasetDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
+from eval_board_client import BenchmarkDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
 from requests import HTTPError
 
 
@@ -55,8 +55,6 @@ MODELS = [
     # ("dmd_infer_1024data_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_1024data_step3000_1024/"),
     # ("dmd_infer_1024data_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_1024data_step4000_1024/"),
 
-    # ("dmd_infer_init3000_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step1000_1024/"),
-    # ("dmd_infer_init3000_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step2000_1024/"),
     # ("dmd_infer_init3000_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step3000_1024/"),
     # ("dmd_infer_init3000_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step4000_1024/"),
     # ("dmd_infer_init3000_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_step5000_1024/"),
@@ -67,23 +65,6 @@ MODELS = [
     # ("dmd_infer_init3000_r128norm_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step1000_1024/"),
     # ("dmd_infer_init3000_r128norm_ema_step1000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step1000_1024/"),
     # ("dmd_infer_init3000_r128norm_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step2000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step2000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step2000_1024/"),
-    # ("dmd_infer_init3000_r128norm_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step3000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step3000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step3000_1024/"),
-    # ("dmd_infer_init3000_r128norm_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step4000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step4000_1024/"),
-    # ("dmd_infer_init3000_r128norm_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step5000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step5000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_1024/"),
-    # ("dmd_infer_init3000_r128norm_step12000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step12000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step12000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step12000_1024/"),
-    # ("dmd_infer_init3000_r128norm_step15000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_step15000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step15000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step15000_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step15000_lora0p8_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step15000_lora0p8_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step5000_lora0p7_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_lora0p7_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step5000_lora0p8_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_lora0p8_1024/"),
-    # ("dmd_infer_init3000_r128norm_ema_step5000_lora0p9_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_init3000_r128norm_ema_step5000_lora0p9_1024/"),
-    # ("dmd_infer_fullft_step4000_1024", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/dmd_infer_fullft_step4000_1024/"),
-    
 
     # ("draft-realgen-hpsv3-300", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-realgen-hpsv3/ckpt_000300-lora-1.0-attn-mask/1024x1024/"),
     # ("draft-realgen-hpsv3-500", "s3://hot-data-foundations-useast1/shivam/eval/benchmark/draft-realgen-hpsv3/ckpt_000500-lora-1.0-attn-mask/1024x1024/"),
@@ -164,7 +145,7 @@ def discover_images(s3, model_name: str, prefix: str) -> List[ImageSpec]:
 
 def main() -> None:
     s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
-    dataset = DatasetDescriptor(name=DATASET_NAME)
+    benchmark = BenchmarkDescriptor(name=DATASET_NAME)
     client = EvalBoardClient(base_url=BASE_URL, password=EVAL_BOARD_PASSWORD)
     for model_name, prefix in MODELS:
         print(f"Discovering images for model '{model_name}' under {prefix}...")
@@ -179,7 +160,7 @@ def main() -> None:
         total_images = len(images)
         num_batches = (total_images + BATCH_SIZE - 1) // BATCH_SIZE
         print(
-            f"Preparing to ingest {total_images} images in {num_batches} batch(es) for model={model_descriptor.name}, dataset={dataset.name}"
+            f"Preparing to ingest {total_images} images in {num_batches} batch(es) for model={model_descriptor.name}, benchmark={benchmark.name}"
         )
 
         for batch_idx in range(num_batches):
@@ -192,7 +173,7 @@ def main() -> None:
             try:
                 payload = client.ingest(
                     model=model_descriptor,
-                    dataset=dataset,
+                    benchmark=benchmark,
                     images=batch_images,
                     dry_run=False,
                 )

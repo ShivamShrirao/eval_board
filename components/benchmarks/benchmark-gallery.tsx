@@ -11,8 +11,8 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function DatasetGallery({ datasetId }: { datasetId: string }) {
-  const { data, error, isLoading } = useSWR(`/api/datasets/${datasetId}/images`, fetcher);
+export function BenchmarkGallery({ benchmarkId }: { benchmarkId: string }) {
+  const { data, error, isLoading } = useSWR(`/api/benchmarks/${benchmarkId}/images`, fetcher);
 
   if (isLoading) {
     return <div className="flex h-full items-center justify-center text-sm text-slate-500">Loading images...</div>;

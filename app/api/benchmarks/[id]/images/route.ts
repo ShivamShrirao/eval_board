@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const artifacts = await prisma.imageArtifact.findMany({
-    where: { datasetId: id },
+    where: { benchmarkId: id },
     orderBy: { createdAt: "desc" }
   });
 

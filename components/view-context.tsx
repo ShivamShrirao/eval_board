@@ -16,7 +16,7 @@ interface ViewContextValue {
   updateColumn: (columnId: string, updater: Partial<GridColumnConfig>) => void;
   removeColumn: (columnId: string) => void;
   moveColumn: (columnId: string, direction: -1 | 1) => void;
-  setDataset: (datasetId: string | null) => void;
+  setBenchmark: (benchmarkId: string | null) => void;
   hydrateConfig: (nextConfig: GridViewConfig, nextViewId?: string | null) => void;
   markSaved: (viewId?: string | null) => void;
   markDirty: () => void;
@@ -105,10 +105,10 @@ export function ViewProvider({ initialViewId, initialConfig, children }: ViewPro
     });
   };
 
-  const setDataset = (datasetId: string | null) => {
+  const setBenchmark = (benchmarkId: string | null) => {
     setConfig((prev) => ({
       ...prev,
-      datasetId: datasetId ?? null
+      benchmarkId: benchmarkId ?? null
     }));
   };
 
@@ -129,7 +129,7 @@ export function ViewProvider({ initialViewId, initialConfig, children }: ViewPro
         updateColumn,
         removeColumn,
         moveColumn,
-        setDataset,
+        setBenchmark,
         hydrateConfig,
         markSaved,
         markDirty,

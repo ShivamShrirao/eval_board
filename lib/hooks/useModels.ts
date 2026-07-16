@@ -14,7 +14,7 @@ const fetcher = async (url: string) => {
 export function useModels(
   search: string,
   options: {
-    datasetId?: string | null;
+    benchmarkId?: string | null;
     limit?: number;
   } = {}
 ) {
@@ -22,8 +22,8 @@ export function useModels(
   if (search) {
     params.set("search", search);
   }
-  if (options.datasetId) {
-    params.set("datasetId", options.datasetId);
+  if (options.benchmarkId) {
+    params.set("benchmarkId", options.benchmarkId);
   }
   if (options.limit) {
     params.set("limit", String(options.limit));

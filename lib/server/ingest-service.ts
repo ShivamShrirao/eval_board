@@ -13,7 +13,7 @@ export interface IngestModelInput {
   description?: string | null;
 }
 
-export interface IngestDatasetInput {
+export interface IngestBenchmarkInput {
   name: string;
   slug?: string | null;
 }
@@ -33,13 +33,13 @@ export interface IngestImageInput {
 
 export interface IngestPayload {
   model: IngestModelInput;
-  dataset: IngestDatasetInput;
+  benchmark: IngestBenchmarkInput;
   images: IngestImageInput[];
 }
 
 export interface IngestResult {
   modelId: string;
-  datasetId: string;
+  benchmarkId: string;
   count: number;
 }
 
@@ -67,34 +67,34 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
     }
   });
 
-  const dataset = await prisma.dataset.upsert({
-    where: { name: payload.dataset.name },
+  const benchmark = await prisma.benchmark.upsert({
+    where: { name: payload.benchmark.name },
     create: {
-      name: payload.dataset.name,
-      slug: payload.dataset.slug ?? slugify(payload.dataset.name)
+      name: payload.benchmark.name,
+      slug: payload.benchmark.slug ?? slugify(payload.benchmark.name)
     },
     update: {
-      slug: payload.dataset.slug ?? undefined
+      slug: payload.benchmark.slug ?? undefined
     }
   });
 
   if (!payload.images.length) {
-    return { modelId: model.id, datasetId: dataset.id, count: 0 };
+    return { modelId: model.id, benchmarkId: benchmark.id, count: 0 };
   }
 
   const operations = payload.images.map((image) => {
     const type = image.type ?? modelType;
     return prisma.imageArtifact.upsert({
       where: {
-        modelId_datasetId_filename: {
+        modelId_benchmarkId_filename: {
           modelId: model.id,
-          datasetId: dataset.id,
+          benchmarkId: benchmark.id,
           filename: image.filename
         }
       },
       create: {
         modelId: model.id,
-        datasetId: dataset.id,
+        benchmarkId: benchmark.id,
         filename: image.filename,
         type,
         sourceUrl: image.sourceUrl ?? null,
@@ -129,7 +129,7 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
   // next read via the cache route.
   await removeCachedFiles(result.map((artifact) => artifact.id));
 
-  return { modelId: model.id, datasetId: dataset.id, count: result.length };
+  return { modelId: model.id, benchmarkId: benchmark.id, count: result.length };
 }
 
 const normalizeCapturedAt = (value: string | Date | null | undefined): Date | null => {

@@ -8,7 +8,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from .client import DatasetDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
+from .client import BenchmarkDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
 from .s3_manifest import S3ManifestBuilder
 
 console = Console()
@@ -58,7 +58,10 @@ def ingest(
     ),
     model: str = typer.Option(..., help="Model name to register"),
     model_type: Optional[str] = typer.Option(None, help="Artifact type for this model: image or text."),
-    dataset: str = typer.Option(..., help="Dataset name to register"),
+    benchmark: Optional[str] = typer.Option(None, help="Benchmark name to register"),
+    dataset: Optional[str] = typer.Option(
+        None, help="Deprecated alias for --benchmark; kept for backward compatibility."
+    ),
     manifest: Optional[Path] = typer.Option(None, exists=True, file_okay=True, dir_okay=False),
     image_prefix: Optional[List[str]] = typer.Option(
         None,
@@ -77,6 +80,12 @@ def ingest(
         raise typer.BadParameter("Provide either --manifest or at least one --image-prefix.")
     if model_type is not None and model_type not in {"image", "text"}:
         raise typer.BadParameter("--model-type must be either 'image' or 'text'.")
+
+    if benchmark is None:
+        if dataset is None:
+            raise typer.BadParameter("--benchmark is required.")
+        console.print("[yellow]--dataset is deprecated; use --benchmark instead.[/]")
+        benchmark = dataset
 
     images: List[ImageSpec] = []
     resolved_model_type = model_type or "image"
@@ -118,7 +127,7 @@ def ingest(
     with EvalBoardClient(base_url=base_url, api_key=api_key, password=password) as client:
         payload = client.ingest(
             model=ModelDescriptor(name=model, type=resolved_model_type),
-            dataset=DatasetDescriptor(name=dataset),
+            benchmark=BenchmarkDescriptor(name=benchmark),
             images=images,
             dry_run=dry_run,
         )

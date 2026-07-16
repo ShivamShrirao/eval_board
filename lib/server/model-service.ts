@@ -3,7 +3,7 @@ import "server-only";
 import { prisma } from "../prisma";
 import { Prisma, type ImageArtifact } from "@prisma/client";
 import type {
-  DatasetSummary,
+  BenchmarkSummary,
   GridViewConfig,
   ImageArtifactDTO,
   ModelSummary
@@ -33,11 +33,11 @@ const slugify = (value: string) =>
     .slice(0, 60);
 
 export async function listModels({
-  datasetId,
+  benchmarkId,
   search,
   take
 }: {
-  datasetId?: string;
+  benchmarkId?: string;
   search?: string;
   take?: number;
 }): Promise<ModelSummary[]> {
@@ -50,10 +50,10 @@ export async function listModels({
     };
   }
 
-  if (datasetId) {
+  if (benchmarkId) {
     where.imageArtifacts = {
       some: {
-        datasetId
+        benchmarkId
       }
     };
   }
@@ -66,17 +66,17 @@ export async function listModels({
     take,
     include: {
       imageArtifacts: {
-        where: datasetId ? { datasetId } : undefined,
+        where: benchmarkId ? { benchmarkId } : undefined,
         select: {
           id: true,
-          datasetId: true
+          benchmarkId: true
         }
       }
     }
   });
 
   return models.map((model) => {
-    const datasetIds = new Set(model.imageArtifacts.map((artifact) => artifact.datasetId));
+    const benchmarkIds = new Set(model.imageArtifacts.map((artifact) => artifact.benchmarkId));
 
     return {
       id: model.id,
@@ -85,19 +85,19 @@ export async function listModels({
       type: model.type,
       description: model.description,
       createdAt: model.createdAt.toISOString(),
-      datasetCount: datasetIds.size,
+      benchmarkCount: benchmarkIds.size,
       imageCount: model.imageArtifacts.length
     };
   });
 }
 
-export async function listDatasets({
+export async function listBenchmarks({
   search,
   take
 }: {
   search?: string;
   take?: number;
-}): Promise<DatasetSummary[]> {
+}): Promise<BenchmarkSummary[]> {
   const where = search
     ? {
         name: {
@@ -107,7 +107,7 @@ export async function listDatasets({
       }
     : undefined;
 
-  const datasets = await prisma.dataset.findMany({
+  const benchmarks = await prisma.benchmark.findMany({
     where,
     orderBy: {
       createdAt: "desc"
@@ -123,16 +123,16 @@ export async function listDatasets({
     }
   });
 
-  return datasets.map((dataset) => {
-    const modelIds = new Set(dataset.imageArtifacts.map((artifact) => artifact.modelId));
+  return benchmarks.map((benchmark) => {
+    const modelIds = new Set(benchmark.imageArtifacts.map((artifact) => artifact.modelId));
 
     return {
-      id: dataset.id,
-      name: dataset.name,
-      slug: dataset.slug,
-      createdAt: dataset.createdAt.toISOString(),
+      id: benchmark.id,
+      name: benchmark.name,
+      slug: benchmark.slug,
+      createdAt: benchmark.createdAt.toISOString(),
       modelCount: modelIds.size,
-      imageCount: dataset.imageArtifacts.length
+      imageCount: benchmark.imageArtifacts.length
     };
   });
 }
@@ -156,8 +156,8 @@ export async function fetchArtifactsForGrid({
 
   const where: Prisma.ImageArtifactWhereInput = {};
 
-  if (config.datasetId) {
-    where.datasetId = config.datasetId;
+  if (config.benchmarkId) {
+    where.benchmarkId = config.benchmarkId;
   }
 
   if (selectedModelIds.length > 0) {
@@ -220,7 +220,7 @@ function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifac
     return {
       id: artifact.id,
       modelId: artifact.modelId,
-      datasetId: artifact.datasetId,
+      benchmarkId: artifact.benchmarkId,
       filename: artifact.filename,
       type: artifact.type,
       prompt: null,
@@ -261,7 +261,7 @@ async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactD
   return {
     id: artifact.id,
     modelId: artifact.modelId,
-    datasetId: artifact.datasetId,
+    benchmarkId: artifact.benchmarkId,
     filename: artifact.filename,
     type: artifact.type,
     prompt: artifact.prompt,
@@ -332,22 +332,22 @@ export async function clearModelImages(id: string) {
   return { modelId: result.modelId, deletedArtifacts: result.deletedArtifacts };
 }
 
-export async function deleteDatasetById(id: string) {
+export async function deleteBenchmarkById(id: string) {
   const result = await prisma.$transaction(async (tx) => {
-    const dataset = await tx.dataset.findUnique({ where: { id } });
-    if (!dataset) {
-      throw new EntityNotFoundError("Dataset not found");
+    const benchmark = await tx.benchmark.findUnique({ where: { id } });
+    if (!benchmark) {
+      throw new EntityNotFoundError("Benchmark not found");
     }
 
     const artifactIds = await tx.imageArtifact
-      .findMany({ where: { datasetId: id }, select: { id: true } })
+      .findMany({ where: { benchmarkId: id }, select: { id: true } })
       .then((rows) => rows.map((row) => row.id));
 
     const deletedArtifacts = await tx.imageArtifact.deleteMany({
-      where: { datasetId: id }
+      where: { benchmarkId: id }
     });
 
-    await tx.dataset.delete({ where: { id } });
+    await tx.benchmark.delete({ where: { id } });
 
     return {
       artifactIds,
@@ -376,13 +376,13 @@ export async function updateModelName(id: string, name: string): Promise<ModelSu
       include: {
         imageArtifacts: {
           select: {
-            datasetId: true
+            benchmarkId: true
           }
         }
       }
     });
 
-    const datasetIds = new Set(updated.imageArtifacts.map((artifact) => artifact.datasetId));
+    const benchmarkIds = new Set(updated.imageArtifacts.map((artifact) => artifact.benchmarkId));
 
     return {
       id: updated.id,
@@ -391,7 +391,7 @@ export async function updateModelName(id: string, name: string): Promise<ModelSu
       type: updated.type,
       description: updated.description,
       createdAt: updated.createdAt.toISOString(),
-      datasetCount: datasetIds.size,
+      benchmarkCount: benchmarkIds.size,
       imageCount: updated.imageArtifacts.length
     };
   } catch (error) {
@@ -413,7 +413,7 @@ export async function getModelDetail(id: string): Promise<ModelSummary | null> {
     include: {
       imageArtifacts: {
         select: {
-          datasetId: true
+          benchmarkId: true
         }
       }
     }
@@ -423,7 +423,7 @@ export async function getModelDetail(id: string): Promise<ModelSummary | null> {
     return null;
   }
 
-  const datasetIds = new Set(model.imageArtifacts.map((artifact) => artifact.datasetId));
+  const benchmarkIds = new Set(model.imageArtifacts.map((artifact) => artifact.benchmarkId));
 
   return {
     id: model.id,
@@ -432,13 +432,13 @@ export async function getModelDetail(id: string): Promise<ModelSummary | null> {
     type: model.type,
     description: model.description,
     createdAt: model.createdAt.toISOString(),
-    datasetCount: datasetIds.size,
+    benchmarkCount: benchmarkIds.size,
     imageCount: model.imageArtifacts.length
   };
 }
 
-export async function getDatasetDetail(id: string): Promise<DatasetSummary | null> {
-  const dataset = await prisma.dataset.findUnique({
+export async function getBenchmarkDetail(id: string): Promise<BenchmarkSummary | null> {
+  const benchmark = await prisma.benchmark.findUnique({
     where: { id },
     include: {
       imageArtifacts: {
@@ -449,18 +449,18 @@ export async function getDatasetDetail(id: string): Promise<DatasetSummary | nul
     }
   });
 
-  if (!dataset) {
+  if (!benchmark) {
     return null;
   }
 
-  const modelIds = new Set(dataset.imageArtifacts.map((artifact) => artifact.modelId));
+  const modelIds = new Set(benchmark.imageArtifacts.map((artifact) => artifact.modelId));
 
   return {
-    id: dataset.id,
-    name: dataset.name,
-    slug: dataset.slug,
-    createdAt: dataset.createdAt.toISOString(),
+    id: benchmark.id,
+    name: benchmark.name,
+    slug: benchmark.slug,
+    createdAt: benchmark.createdAt.toISOString(),
     modelCount: modelIds.size,
-    imageCount: dataset.imageArtifacts.length
+    imageCount: benchmark.imageArtifacts.length
   };
 }

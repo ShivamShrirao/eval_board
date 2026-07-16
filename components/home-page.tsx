@@ -5,20 +5,20 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "../lib/utils";
 import { GridPage } from "./grid/grid-page";
 import { ModelsPage } from "./models/models-page";
-import { DatasetsPage } from "./datasets/datasets-page";
+import { BenchmarksPage } from "./benchmarks/benchmarks-page";
 import { useViewPersistence } from "./use-view-persistence";
 import { useViewContext } from "./view-context";
-import { useDatasets } from "../lib/hooks/useDatasets";
+import { useBenchmarks } from "../lib/hooks/useBenchmarks";
 import { SearchableDropdown } from "./ui/searchable-dropdown";
 
 interface HomePageProps {
-  initialTab: "grid" | "models" | "datasets";
+  initialTab: "grid" | "models" | "benchmarks";
 }
 
-const tabs: Array<{ id: "grid" | "models" | "datasets"; label: string }> = [
+const tabs: Array<{ id: "grid" | "models" | "benchmarks"; label: string }> = [
   { id: "grid", label: "Grid" },
   { id: "models", label: "Models" },
-  { id: "datasets", label: "Datasets" }
+  { id: "benchmarks", label: "Benchmarks" }
 ];
 
 export function HomePage({ initialTab }: HomePageProps) {
@@ -27,17 +27,17 @@ export function HomePage({ initialTab }: HomePageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<HomePageProps["initialTab"]>(initialTab);
-  const { config, setDataset, addColumn } = useViewContext();
-  const { datasets } = useDatasets("");
+  const { config, setBenchmark, addColumn } = useViewContext();
+  const { benchmarks } = useBenchmarks("");
 
-  const datasetOptions = useMemo(
+  const benchmarkOptions = useMemo(
     () =>
-      datasets.map((dataset) => ({
-        value: dataset.id,
-        label: dataset.name,
-        description: `${dataset.modelCount} models • ${dataset.imageCount} images`
+      benchmarks.map((benchmark) => ({
+        value: benchmark.id,
+        label: benchmark.name,
+        description: `${benchmark.modelCount} models • ${benchmark.imageCount} images`
       })),
-    [datasets]
+    [benchmarks]
   );
 
   useEffect(() => {
@@ -60,11 +60,11 @@ export function HomePage({ initialTab }: HomePageProps) {
 
   const content = useMemo(() => {
     if (activeTab === "models") return <ModelsPage />;
-    if (activeTab === "datasets") return <DatasetsPage />;
+    if (activeTab === "benchmarks") return <BenchmarksPage />;
     return <GridPage />;
   }, [activeTab]);
 
-  const handleTabChange = (tab: "grid" | "models" | "datasets") => {
+  const handleTabChange = (tab: "grid" | "models" | "benchmarks") => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
     params.set("tab", tab);
@@ -97,10 +97,10 @@ export function HomePage({ initialTab }: HomePageProps) {
           {activeTab === "grid" && (
             <div className="ml-4 flex flex-1 items-center gap-3">
               <SearchableDropdown
-                options={datasetOptions}
-                value={config.datasetId ?? null}
-                onSelect={(value) => setDataset(value)}
-                placeholder="Select dataset"
+                options={benchmarkOptions}
+                value={config.benchmarkId ?? null}
+                onSelect={(value) => setBenchmark(value)}
+                placeholder="Select benchmark"
                 allowClear
                 buttonClassName="min-w-[240px] max-w-[360px] bg-black/60 hover:bg-black/80 !py-0 text-xs leading-tight"
                 buttonStyle={{ color: "white" }}

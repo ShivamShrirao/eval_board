@@ -21,7 +21,7 @@ from requests import HTTPError
 sys.path.insert(0, "/home/ubuntu/foundation-training")
 from utils import s3 as s3_utils
 
-from eval_board_client import DatasetDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
+from eval_board_client import BenchmarkDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
 
 # Configuration
 BASE_URL = "http://localhost:8080"
@@ -209,7 +209,7 @@ def ingest_for_model(client: EvalBoardClient, model_name: str, include_context: 
         print("No pairs found, skipping.")
         return
 
-    dataset = DatasetDescriptor(name=DATASET_NAME)
+    benchmark = BenchmarkDescriptor(name=DATASET_NAME)
 
     # Models: context (source image) and edited (generated image).
     # Only ingest the context model on the first iteration since it doesn't
@@ -244,7 +244,7 @@ def ingest_for_model(client: EvalBoardClient, model_name: str, include_context: 
             try:
                 client.ingest(
                     model=model_descriptor,
-                    dataset=dataset,
+                    benchmark=benchmark,
                     images=batch_images,
                     dry_run=False,
                 )

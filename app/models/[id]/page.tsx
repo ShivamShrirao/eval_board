@@ -55,8 +55,8 @@ export default async function ModelDetailPage({ params }: ModelPageProps) {
         </div>
         <dl className="grid gap-4 text-sm text-slate-300 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-900/60 bg-black/40 p-4">
-            <dt className="text-xs uppercase tracking-wide text-slate-500">Datasets</dt>
-            <dd className="mt-1 text-lg font-semibold text-slate-100">{model.datasetCount}</dd>
+            <dt className="text-xs uppercase tracking-wide text-slate-500">Benchmarks</dt>
+            <dd className="mt-1 text-lg font-semibold text-slate-100">{model.benchmarkCount}</dd>
           </div>
           <div className="rounded-xl border border-slate-900/60 bg-black/40 p-4">
             <dt className="text-xs uppercase tracking-wide text-slate-500">Images</dt>

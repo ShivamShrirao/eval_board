@@ -14,20 +14,20 @@ import { ArtifactImage } from "./artifact-image";
 export function GridPage() {
   const { config, updateColumn, removeColumn, moveColumn } = useViewContext();
 
-  const datasetId = config.datasetId ?? null;
-  const [modelSearchState, setModelSearchState] = useState<{ datasetId: string | null; value: string }>({
-    datasetId: null,
+  const benchmarkId = config.benchmarkId ?? null;
+  const [modelSearchState, setModelSearchState] = useState<{ benchmarkId: string | null; value: string }>({
+    benchmarkId: null,
     value: ""
   });
-  const modelSearch = modelSearchState.datasetId === datasetId ? modelSearchState.value : "";
+  const modelSearch = modelSearchState.benchmarkId === benchmarkId ? modelSearchState.value : "";
   const setModelSearch = useCallback(
     (value: string) => {
-      setModelSearchState({ datasetId, value });
+      setModelSearchState({ benchmarkId, value });
     },
-    [datasetId]
+    [benchmarkId]
   );
   const { models, isLoading: isModelsLoading } = useModels(modelSearch, {
-    datasetId
+    benchmarkId
   });
   const { rows, isLoading } = useGridData(config);
 
@@ -87,7 +87,7 @@ export function GridPage() {
       models.map((model) => ({
         value: model.id,
         label: model.name,
-        description: `${model.datasetCount} datasets • ${model.imageCount} artifacts • ${model.type}`
+        description: `${model.benchmarkCount} benchmarks • ${model.imageCount} artifacts • ${model.type}`
       })),
     [models]
   );
@@ -234,7 +234,7 @@ export function GridPage() {
                       });
                     }}
                     placeholder="Select model"
-                    emptyMessage={config.datasetId ? "No models found for this dataset" : "No models found"}
+                    emptyMessage={config.benchmarkId ? "No models found for this benchmark" : "No models found"}
                     isLoading={isModelsLoading}
                     allowClear
                     buttonClassName="w-full justify-between bg-black/60 hover:bg-black/80 !py-0 text-xs leading-tight"

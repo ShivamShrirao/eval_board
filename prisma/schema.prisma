@@ -25,7 +25,7 @@ model Model {
   @@index([createdAt])
 }
 
-model Dataset {
+model Benchmark {
   id             String          @id @default(uuid())
   name           String          @unique
   slug           String          @unique
@@ -39,7 +39,7 @@ model Dataset {
 model ImageArtifact {
   id         String   @id @default(uuid())
   modelId    String
-  datasetId  String
+  benchmarkId  String
   filename   String
   type       ArtifactType @default(image)
   prompt     String?
@@ -55,13 +55,13 @@ model ImageArtifact {
   updatedAt    DateTime @updatedAt
 
   model   Model   @relation(fields: [modelId], references: [id])
-  dataset Dataset @relation(fields: [datasetId], references: [id])
+  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
 
-  @@unique([modelId, datasetId, filename], name: "modelId_datasetId_filename")
-  @@index([modelId, datasetId])
-  @@index([datasetId, createdAt])
-  @@index([datasetId, filename, modelId, createdAt(sort: Desc), id], name: "ImageArtifact_grid_filename_idx")
-  @@index([datasetId, createdAt(sort: Desc), modelId, filename, id], name: "ImageArtifact_grid_createdAt_idx")
+  @@unique([modelId, benchmarkId, filename], name: "modelId_benchmarkId_filename")
+  @@index([modelId, benchmarkId])
+  @@index([benchmarkId, createdAt])
+  @@index([benchmarkId, filename, modelId, createdAt(sort: Desc), id], name: "ImageArtifact_grid_filename_idx")
+  @@index([benchmarkId, createdAt(sort: Desc), modelId, filename, id], name: "ImageArtifact_grid_createdAt_idx")
   @@index([promptHash])
 }
 

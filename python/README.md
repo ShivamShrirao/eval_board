@@ -28,7 +28,7 @@ images = [
 
 client.ingest(
     model={"name": "stable-diffusion-v4"},
-    dataset={"name": "coco-validation"},
+    benchmark={"name": "coco-validation"},
     images=images,
 )
 ```
@@ -46,7 +46,7 @@ images = [
 
 client.ingest(
     model={"name": "edit-instructions", "type": "text"},
-    dataset={"name": "product-edits"},
+    benchmark={"name": "product-edits"},
     images=images,
 )
 ```
@@ -56,7 +56,7 @@ client.ingest(
 eval-board ingest \
   --base-url http://localhost:3000 \
   --model "stable-diffusion-v4" \
-  --dataset "coco-validation" \
+  --benchmark "coco-validation" \
   --manifest ./samples/manifest.json
 ```
 

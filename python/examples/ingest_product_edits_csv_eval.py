@@ -19,7 +19,7 @@ from typing import Iterable, List
 
 from requests import HTTPError
 
-from eval_board_client import DatasetDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
+from eval_board_client import BenchmarkDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
 
 # Configuration
 BASE_URL = "http://localhost:8080"
@@ -162,7 +162,7 @@ def main() -> None:
     print(f"Sampled {len(rows)} row(s) from {total_rows} total.")
 
     client = EvalBoardClient(base_url=BASE_URL, password=EVAL_BOARD_PASSWORD)
-    dataset = DatasetDescriptor(name=DATASET_NAME)
+    benchmark = BenchmarkDescriptor(name=DATASET_NAME)
 
     if CLEAR_EXISTING_MODEL_IMAGES:
         print("\nClearing existing model images...")
@@ -200,7 +200,7 @@ def main() -> None:
             try:
                 client.ingest(
                     model=model_descriptor,
-                    dataset=dataset,
+                    benchmark=benchmark,
                     images=batch_images,
                     dry_run=False,
                 )

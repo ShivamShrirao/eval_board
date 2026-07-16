@@ -1,6 +1,6 @@
 # Eval Board
 
-Visual dashboard for comparing diffusion model checkpoints across datasets.
+Visual dashboard for comparing diffusion model checkpoints across benchmarks.
 
 ## Project Structure
 - `app/` – Next.js App Router pages and layouts.

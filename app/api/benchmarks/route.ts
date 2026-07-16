@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { listDatasets } from "../../../lib/server/model-service";
+import { listBenchmarks } from "../../../lib/server/model-service";
 
 const querySchema = z.object({
   search: z
@@ -32,12 +32,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const datasets = await listDatasets({
+  const benchmarks = await listBenchmarks({
     search: parsed.data.search,
     take: parsed.data.limit ?? 20
   });
 
   return NextResponse.json({
-    datasets
+    benchmarks
   });
 }

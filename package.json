@@ -2,7 +2,7 @@
   "name": "eval-board",
   "version": "0.1.0",
   "private": true,
-  "description": "Dashboard for comparing diffusion model outputs across models and datasets.",
+  "description": "Dashboard for comparing diffusion model outputs across models and benchmarks.",
   "scripts": {
     "dev": "next dev -p 8080",
     "build": "next build",

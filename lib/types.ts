@@ -4,14 +4,14 @@ export type ArtifactType = "image" | "text";
 export interface GridColumnConfig {
   id: string;
   modelId: UUID | null;
-  datasetId?: UUID | null;
+  benchmarkId?: UUID | null;
   label?: string;
 }
 
 export interface GridViewConfig {
   version: 1;
   columns: GridColumnConfig[];
-  datasetId?: UUID | null;
+  benchmarkId?: UUID | null;
   sortBy?: "createdAt" | "filename";
 }
 
@@ -28,11 +28,11 @@ export interface ModelSummary {
   type: ArtifactType;
   description?: string | null;
   createdAt: string;
-  datasetCount: number;
+  benchmarkCount: number;
   imageCount: number;
 }
 
-export interface DatasetSummary {
+export interface BenchmarkSummary {
   id: UUID;
   name: string;
   slug: string;
@@ -44,7 +44,7 @@ export interface DatasetSummary {
 export interface ImageArtifactDTO {
   id: UUID;
   modelId: UUID;
-  datasetId: UUID;
+  benchmarkId: UUID;
   filename: string;
   type: ArtifactType;
   prompt?: string | null;

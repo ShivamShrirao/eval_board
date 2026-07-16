@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Eval Board",
-  description: "Visualize and compare diffusion model outputs across checkpoints and datasets."
+  description: "Visualize and compare diffusion model outputs across checkpoints and benchmarks."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

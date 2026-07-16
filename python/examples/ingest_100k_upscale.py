@@ -5,7 +5,7 @@ import random
 import boto3
 from typing import Dict, Iterator, List, Tuple
 from botocore.config import Config
-from eval_board_client import DatasetDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
+from eval_board_client import BenchmarkDescriptor, EvalBoardClient, ImageSpec, ModelDescriptor
 from requests import HTTPError
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
@@ -153,7 +153,7 @@ def main() -> None:
     random.seed(42)
 
     s3 = boto3.client("s3", config=Config(signature_version="s3v4"))
-    dataset = DatasetDescriptor(name=DATASET_NAME)
+    benchmark = BenchmarkDescriptor(name=DATASET_NAME)
     client = EvalBoardClient(base_url=BASE_URL)
     
     # Step 1: Discover and sample paths from the reference directory (stage2)
@@ -186,7 +186,7 @@ def main() -> None:
             try:
                 client.ingest(
                     model=model_descriptor,
-                    dataset=dataset,
+                    benchmark=benchmark,
                     images=batch_images,
                     dry_run=False,
                 )

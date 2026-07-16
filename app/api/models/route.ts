@@ -3,7 +3,7 @@ import { z } from "zod";
 import { listModels } from "../../../lib/server/model-service";
 
 const querySchema = z.object({
-  datasetId: z.string().uuid().optional(),
+  benchmarkId: z.string().uuid().optional(),
   search: z
     .string()
     .trim()
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   const models = await listModels({
-    datasetId: parsed.data.datasetId,
+    benchmarkId: parsed.data.benchmarkId,
     search: parsed.data.search,
     take: parsed.data.limit
   });

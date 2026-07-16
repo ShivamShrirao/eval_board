@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import type { DatasetSummary } from "../types";
+import type { BenchmarkSummary } from "../types";
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -11,20 +11,20 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-export function useDatasets(search: string) {
+export function useBenchmarks(search: string) {
   const params = new URLSearchParams();
   if (search) {
     params.set("search", search);
   }
   params.set("limit", "100");
 
-  const { data, error, isLoading, mutate } = useSWR<{ datasets: DatasetSummary[] }>(
-    `/api/datasets?${params.toString()}`,
+  const { data, error, isLoading, mutate } = useSWR<{ benchmarks: BenchmarkSummary[] }>(
+    `/api/benchmarks?${params.toString()}`,
     fetcher
   );
 
   return {
-    datasets: data?.datasets ?? [],
+    benchmarks: data?.benchmarks ?? [],
     isLoading,
     isError: Boolean(error),
     refresh: () => mutate()

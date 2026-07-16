@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Iterable, Literal, Mapping, MutableMapping, Optional
@@ -33,9 +34,25 @@ class ModelDescriptor:
 
 
 @dataclass
-class DatasetDescriptor:
+class BenchmarkDescriptor:
     name: str
     slug: Optional[str] = None
+
+
+@dataclass
+class DatasetDescriptor(BenchmarkDescriptor):
+    """Deprecated alias for :class:`BenchmarkDescriptor`.
+
+    Kept so existing external ingest scripts keep working. Emits a
+    ``DeprecationWarning`` on construction.
+    """
+
+    def __post_init__(self) -> None:
+        warnings.warn(
+            "DatasetDescriptor is deprecated; use BenchmarkDescriptor instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
 
 @dataclass
@@ -157,15 +174,29 @@ class EvalBoardClient:
         self,
         *,
         model: ModelDescriptor | Mapping[str, Any],
-        dataset: DatasetDescriptor | Mapping[str, Any],
+        benchmark: BenchmarkDescriptor | Mapping[str, Any] | None = None,
         images: Iterable[ImageSpec],
         dry_run: bool = False,
+        dataset: BenchmarkDescriptor | Mapping[str, Any] | None = None,
     ) -> Mapping[str, Any]:
+        # `dataset` is a deprecated alias for `benchmark`, kept for external scripts.
+        if benchmark is None:
+            if dataset is None:
+                raise TypeError("ingest() missing required keyword argument: 'benchmark'")
+            warnings.warn(
+                "The `dataset` argument to ingest() is deprecated; use `benchmark` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            benchmark = dataset
+
         image_payload = [image.to_payload() for image in images]
 
         payload = {
             "model": dataclasses.asdict(model) if isinstance(model, ModelDescriptor) else dict(model),
-            "dataset": dataclasses.asdict(dataset) if isinstance(dataset, DatasetDescriptor) else dict(dataset),
+            "benchmark": dataclasses.asdict(benchmark)
+            if isinstance(benchmark, BenchmarkDescriptor)
+            else dict(benchmark),
             "images": image_payload,
         }
 

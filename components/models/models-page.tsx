@@ -83,7 +83,7 @@ export function ModelsPage() {
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-100">Models</h2>
-          <p className="text-sm text-slate-500">Browse available checkpoints and their dataset coverage.</p>
+          <p className="text-sm text-slate-500">Browse available checkpoints and their benchmark coverage.</p>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -153,8 +153,8 @@ export function ModelsPage() {
               </div>
               <dl className="grid grid-cols-2 gap-3 text-xs text-slate-400">
                 <div>
-                  <dt className="uppercase tracking-wide text-slate-500">Datasets</dt>
-                  <dd className="text-slate-200">{model.datasetCount}</dd>
+                  <dt className="uppercase tracking-wide text-slate-500">Benchmarks</dt>
+                  <dd className="text-slate-200">{model.benchmarkCount}</dd>
                 </div>
                 <div>
                   <dt className="uppercase tracking-wide text-slate-500">Images</dt>
