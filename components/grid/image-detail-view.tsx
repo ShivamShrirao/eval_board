@@ -303,25 +303,6 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                 </div>
               )}
 
-              {/* Metadata */}
-              {metadataEntries.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
-                    Metadata
-                  </div>
-                  <div className="space-y-2">
-                    {metadataEntries.map((entry) => (
-                      <div key={entry.key} className="flex flex-col gap-1 bg-white p-3 rounded-lg border border-slate-200 min-w-0">
-                        <span className="text-xs text-slate-600 font-mono uppercase break-words">{entry.key}</span>
-                        <span className="text-xs text-slate-900 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]">
-                          {entry.value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {(editInstruction || (isLoadingDetail && shouldLoadDetail)) && (
                 <div className="space-y-2">
                   <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
@@ -337,6 +318,25 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                         Loading METADATA
                       </span>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Metadata */}
+              {metadataEntries.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
+                    Metadata
+                  </div>
+                  <div className="space-y-2">
+                    {metadataEntries.map((entry) => (
+                      <div key={entry.key} className="flex flex-col gap-1 bg-white p-3 rounded-lg border border-slate-200 min-w-0">
+                        <span className="text-xs text-slate-600 font-mono uppercase break-words">{entry.key}</span>
+                        <span className="text-xs text-slate-900 font-mono whitespace-pre-wrap [overflow-wrap:anywhere]">
+                          {entry.value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
