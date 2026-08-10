@@ -44,10 +44,12 @@ export interface BenchmarkSummary {
 export interface ImageArtifactDTO {
   id: UUID;
   modelId: UUID;
+  modelName?: string | null;
   benchmarkId: UUID;
   filename: string;
   type: ArtifactType;
   prompt?: string | null;
+  editInstruction?: string | null;
   sourceUrl?: string | null;
   content?: string | null;
   cacheUrl?: string | null;

@@ -188,7 +188,8 @@ export async function fetchArtifactsForGrid({
     orderBy,
     take: artifactTake + 1,
     cursor: cursor ? { id: cursor } : undefined,
-    skip: cursor ? 1 : 0
+    skip: cursor ? 1 : 0,
+    include: { model: { select: { name: true } } }
   });
 
   const hasNext = artifacts.length > artifactTake;
@@ -200,11 +201,16 @@ export async function fetchArtifactsForGrid({
   };
 }
 
-export async function mapArtifactsToDTO(artifacts: ImageArtifact[]): Promise<ImageArtifactDTO[]> {
+// Artifacts optionally carry their model relation (name only) so the DTO can
+// expose `modelName` without a second query. Callers that don't include it just
+// yield `modelName: null`.
+type ArtifactWithModel = ImageArtifact & { model?: { name: string | null } | null };
+
+export async function mapArtifactsToDTO(artifacts: ArtifactWithModel[]): Promise<ImageArtifactDTO[]> {
   return Promise.all(artifacts.map((artifact) => mapArtifactToDTO(artifact)));
 }
 
-function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifactDTO[]> {
+function mapArtifactsToGridDTO(artifacts: ArtifactWithModel[]): Promise<ImageArtifactDTO[]> {
   return Promise.all(artifacts.map(async (artifact) => {
     const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
     const s3Location = artifact.sourceUrl ? resolveS3Location(artifact.sourceUrl, metadata) : null;
@@ -220,10 +226,12 @@ function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifac
     return {
       id: artifact.id,
       modelId: artifact.modelId,
+      modelName: artifact.model?.name ?? null,
       benchmarkId: artifact.benchmarkId,
       filename: artifact.filename,
       type: artifact.type,
       prompt: null,
+      editInstruction: null,
       sourceUrl,
       content: artifact.type === "text" ? artifact.content : null,
       cacheUrl,
@@ -237,7 +245,7 @@ function mapArtifactsToGridDTO(artifacts: ImageArtifact[]): Promise<ImageArtifac
   }));
 }
 
-async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactDTO> {
+async function mapArtifactToDTO(artifact: ArtifactWithModel): Promise<ImageArtifactDTO> {
   const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
 
   const [sourceUrl, thumbnailUrl] = await Promise.all([
@@ -261,10 +269,12 @@ async function mapArtifactToDTO(artifact: ImageArtifact): Promise<ImageArtifactD
   return {
     id: artifact.id,
     modelId: artifact.modelId,
+    modelName: artifact.model?.name ?? null,
     benchmarkId: artifact.benchmarkId,
     filename: artifact.filename,
     type: artifact.type,
     prompt: artifact.prompt,
+    editInstruction: artifact.editInstruction,
     sourceUrl,
     content: artifact.content,
     cacheUrl,

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetBucketLocationCommand, GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const S3_URI_PREFIX = "s3://";
@@ -22,7 +22,11 @@ interface ResolveImageSourceUrlInput {
 }
 
 let s3Client: S3Client | null = null;
+const s3ClientsByRegion = new Map<string, S3Client>();
+const bucketRegions = new Map<string, string>();
+const pendingBucketRegions = new Map<string, Promise<string>>();
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+let hasLoggedBucketRegionFallback = false;
 
 const getClient = () => {
   if (!s3Client) {
@@ -32,6 +36,91 @@ const getClient = () => {
 };
 
 export const getS3Client = getClient;
+
+const getDefaultRegion = () => process.env.AWS_REGION || "us-east-1";
+
+const normalizeBucketRegion = (region: string | null | undefined) => {
+  const normalized = region?.trim();
+  if (!normalized) {
+    return "us-east-1";
+  }
+  return normalized === "EU" ? "eu-west-1" : normalized;
+};
+
+const getS3ClientForRegion = (region: string) => {
+  const normalizedRegion = normalizeBucketRegion(region);
+  let client = s3ClientsByRegion.get(normalizedRegion);
+  if (!client) {
+    client = new S3Client({ region: normalizedRegion });
+    s3ClientsByRegion.set(normalizedRegion, client);
+  }
+  return client;
+};
+
+const getBucketRegionFallback = (bucket: string, error: unknown) => {
+  const fallbackRegion = getDefaultRegion();
+  if (!hasLoggedBucketRegionFallback) {
+    hasLoggedBucketRegionFallback = true;
+    console.warn("Failed to detect S3 bucket region; using default region", {
+      bucket,
+      region: fallbackRegion,
+      error
+    });
+  }
+  return fallbackRegion;
+};
+
+const detectBucketRegion = async (bucket: string): Promise<string> => {
+  try {
+    const response = await fetch(`https://s3.amazonaws.com/${encodeURIComponent(bucket)}`, {
+      method: "HEAD"
+    });
+    const region = response.headers.get("x-amz-bucket-region")?.trim();
+    if (region) {
+      return normalizeBucketRegion(region);
+    }
+  } catch {
+    // Fall through to GetBucketLocation when the unauthenticated request fails.
+  }
+
+  try {
+    const response = await getS3ClientForRegion("us-east-1").send(
+      new GetBucketLocationCommand({ Bucket: bucket })
+    );
+    return normalizeBucketRegion(response.LocationConstraint);
+  } catch (error) {
+    return getBucketRegionFallback(bucket, error);
+  }
+};
+
+export const getBucketRegion = async (bucket: string): Promise<string> => {
+  const cachedRegion = bucketRegions.get(bucket);
+  if (cachedRegion) {
+    return cachedRegion;
+  }
+
+  const pendingRegion = pendingBucketRegions.get(bucket);
+  if (pendingRegion) {
+    return pendingRegion;
+  }
+
+  const resolution = detectBucketRegion(bucket)
+    .catch((error) => getBucketRegionFallback(bucket, error))
+    .then((region) => {
+      bucketRegions.set(bucket, region);
+      return region;
+    })
+    .finally(() => {
+      pendingBucketRegions.delete(bucket);
+    });
+  pendingBucketRegions.set(bucket, resolution);
+  return resolution;
+};
+
+export const getS3ClientForBucket = async (bucket: string): Promise<S3Client> => {
+  const region = await getBucketRegion(bucket);
+  return getS3ClientForRegion(region);
+};
 
 const readPresignTtlSeconds = () => {
   const raw = process.env.S3_PRESIGN_TTL_SECONDS ?? process.env.S3_SIGNED_URL_TTL_SECONDS;
@@ -199,7 +288,7 @@ export async function resolveImageSourceUrl({
       Bucket: location.bucket,
       Key: location.key
     });
-    const signedUrl = await getSignedUrl(getClient(), command, {
+    const signedUrl = await getSignedUrl(await getS3ClientForBucket(location.bucket), command, {
       expiresIn: ttlSeconds
     });
     signedUrlCache.set(cacheKey, {

@@ -98,7 +98,6 @@ const METADATA_FIELD_ORDER = [
   "prompt_2",
   "prompt_3",
   "structured_prompt",
-  "edit_instruction",
   "seed",
   "steps",
   "guidance_scale",
@@ -146,6 +145,7 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
   );
   const displayArtifact = detail?.item ?? artifact;
   const prompt = formatPrompt(displayArtifact.prompt);
+  const editInstruction = displayArtifact.editInstruction?.trim();
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -271,6 +271,12 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   Details
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm text-slate-900 bg-white p-3 rounded-lg border border-slate-200 [&>span]:min-w-0 [&>span]:break-words">
+                  {displayArtifact.modelName && (
+                    <>
+                      <span className="text-slate-600 text-xs">Model</span>
+                      <span className="break-words">{displayArtifact.modelName}</span>
+                    </>
+                  )}
                   <span className="text-slate-600 text-xs">Type</span>
                   <span className="capitalize">{displayArtifact.type}</span>
                   {displayArtifact.width && displayArtifact.height && (
@@ -312,6 +318,25 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                         </span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {(editInstruction || (isLoadingDetail && shouldLoadDetail)) && (
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-wider text-slate-600">
+                    Edit Instruction
+                  </div>
+                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                    {editInstruction ? (
+                      <pre className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                        {editInstruction}
+                      </pre>
+                    ) : (
+                      <span className="text-sm font-medium uppercase tracking-wide text-slate-500">
+                        Loading METADATA
+                      </span>
+                    )}
                   </div>
                 </div>
               )}

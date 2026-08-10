@@ -62,6 +62,7 @@ class ImageSpec:
     type: Literal["image", "text"] = "image"
     content: Optional[str] = None
     prompt: Optional[str] = None
+    edit_instruction: Optional[str] = None
     thumbnail_url: Optional[str] = None
     width: Optional[int] = None
     height: Optional[int] = None
@@ -75,6 +76,7 @@ class ImageSpec:
             "sourceUrl": self.source_url,
             "content": self.content,
             "prompt": self.prompt,
+            "editInstruction": self.edit_instruction,
             "thumbnailUrl": self.thumbnail_url,
             "width": self.width,
             "height": self.height,

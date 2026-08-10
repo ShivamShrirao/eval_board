@@ -26,7 +26,8 @@ export async function GET(
   }
 
   const artifact = await prisma.imageArtifact.findUnique({
-    where: { id: parsed.data.id }
+    where: { id: parsed.data.id },
+    include: { model: { select: { name: true } } }
   });
 
   if (!artifact) {

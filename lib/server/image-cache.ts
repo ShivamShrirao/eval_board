@@ -3,7 +3,7 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getS3Client, type S3ObjectLocation } from "./s3-url";
+import { getS3ClientForBucket, type S3ObjectLocation } from "./s3-url";
 
 const DEFAULT_CACHE_DIR = "/var/cache/eval-board/images";
 
@@ -49,7 +49,7 @@ const downloadFromS3 = async (
 ): Promise<boolean> => {
   const filePath = getCacheFilePath(artifactId);
   try {
-    const response = await getS3Client().send(
+    const response = await (await getS3ClientForBucket(location.bucket)).send(
       new GetObjectCommand({ Bucket: location.bucket, Key: location.key })
     );
     const body = response.Body as { transformToByteArray?: () => Promise<Uint8Array> } | undefined;

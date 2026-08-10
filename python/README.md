@@ -20,6 +20,7 @@ images = [
         filename="sample.png",
         source_url="s3://bucket/run123/sample.png",
         prompt="a cat reading a book",
+        edit_instruction="make the cat wear a party hat",  # edit instruction for edit/arena benchmarks; stored as a first-class column, not in metadata
         metadata={"guidance_scale": 7.5, "steps": 30},
         width=1024,
         height=1024,
@@ -69,6 +70,7 @@ eval-board ingest \
       "type": "image",
       "source_url": "s3://bucket/run123/sample.png",
       "prompt": "a cat reading a book",
+      "edit_instruction": "make the cat wear a party hat",
       "width": 1024,
       "height": 1024,
       "metadata": {

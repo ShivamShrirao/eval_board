@@ -28,6 +28,7 @@ const imageSchema = z.object({
   sourceUrl: sourceUrlSchema.optional().nullable(),
   content: z.string().optional().nullable(),
   prompt: z.string().optional().nullable(),
+  editInstruction: z.string().optional().nullable(),
   thumbnailUrl: sourceUrlSchema.optional().nullable(),
   width: z.number().int().min(1).max(16384).optional().nullable(),
   height: z.number().int().min(1).max(16384).optional().nullable(),

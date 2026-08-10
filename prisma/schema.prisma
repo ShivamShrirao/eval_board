@@ -43,6 +43,7 @@ model ImageArtifact {
   filename   String
   type       ArtifactType @default(image)
   prompt     String?
+  editInstruction String?
   promptHash String?
   sourceUrl  String?
   content    String?
