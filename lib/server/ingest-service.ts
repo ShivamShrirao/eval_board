@@ -85,10 +85,6 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
 
   const operations = payload.images.map((image) => {
     const type = image.type ?? modelType;
-    // Edit instruction is a first-class column. Accept it explicitly, but also
-    // lift it out of legacy metadata keys (`edit_instruction`/`instruction`) and
-    // strip them so metadata stays deduped and consistent with older rows.
-    const { editInstruction, metadata } = extractEditInstruction(image);
     return prisma.imageArtifact.upsert({
       where: {
         modelId_benchmarkId_filename: {
@@ -105,12 +101,12 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
         sourceUrl: image.sourceUrl ?? null,
         content: image.content ?? null,
         prompt: image.prompt ?? null,
-        editInstruction,
+        editInstruction: image.editInstruction ?? null,
         promptHash: image.prompt ? slugify(image.prompt) : null,
         thumbnailUrl: image.thumbnailUrl ?? null,
         width: image.width ?? null,
         height: image.height ?? null,
-        metadata: normalizeMetadata(metadata),
+        metadata: normalizeMetadata(image.metadata),
         capturedAt: normalizeCapturedAt(image.capturedAt)
       },
       update: {
@@ -118,12 +114,12 @@ export async function ingestPayload(payload: IngestPayload): Promise<IngestResul
         sourceUrl: image.sourceUrl ?? null,
         content: image.content ?? null,
         prompt: image.prompt ?? null,
-        editInstruction,
+        editInstruction: image.editInstruction ?? null,
         promptHash: image.prompt ? slugify(image.prompt) : null,
         thumbnailUrl: image.thumbnailUrl ?? null,
         width: image.width ?? null,
         height: image.height ?? null,
-        metadata: normalizeMetadata(metadata),
+        metadata: normalizeMetadata(image.metadata),
         capturedAt: normalizeCapturedAt(image.capturedAt),
         updatedAt: new Date()
       }
@@ -154,30 +150,6 @@ const normalizeMetadata = (
   value: Record<string, unknown> | null | undefined
 ): Prisma.InputJsonValue | undefined =>
   value && Object.keys(value).length ? (value as Prisma.InputJsonValue) : undefined;
-
-// Resolve the edit instruction (explicit field wins, then legacy metadata keys)
-// and return metadata with those legacy keys removed so nothing is duplicated.
-const extractEditInstruction = (
-  image: IngestImageInput
-): { editInstruction: string | null; metadata: Record<string, unknown> | null } => {
-  const metadata = image.metadata ? { ...image.metadata } : null;
-  const fromMetadata =
-    metadata && typeof metadata.edit_instruction === "string"
-      ? metadata.edit_instruction
-      : metadata && typeof metadata.instruction === "string"
-        ? metadata.instruction
-        : null;
-
-  if (metadata) {
-    delete metadata.edit_instruction;
-    delete metadata.instruction;
-  }
-
-  return {
-    editInstruction: image.editInstruction ?? fromMetadata,
-    metadata
-  };
-};
 
 const inferModelType = (images: IngestImageInput[]): ArtifactType => {
   if (
