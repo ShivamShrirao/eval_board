@@ -66,8 +66,8 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
           settleTimer = undefined;
         }
       },
-      // Preload a little above/below the viewport so scrolling stays smooth.
-      { root: null, rootMargin: "300px 0px", threshold: 0 }
+      // Preload a bit above/below the viewport so scrolling stays smooth.
+      { root: null, rootMargin: "900px 0px", threshold: 0 }
     );
     observer.observe(el);
     return () => {
