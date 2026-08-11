@@ -103,8 +103,22 @@ export function useGridData(config: GridViewConfig) {
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [config, data, hasSelectedModels]);
 
+  // Live model name per id, straight from the loaded artifacts, so column
+  // headers reflect the current model name even when a saved view stored an
+  // older name as its label.
+  const modelNameById = useMemo<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const item of data?.items ?? []) {
+      if (item.modelName) {
+        out[item.modelId] = item.modelName;
+      }
+    }
+    return out;
+  }, [data]);
+
   return {
     rows,
+    modelNameById,
     isLoading: shouldFetch ? Boolean(swrLoading) : false,
     isError: shouldFetch ? Boolean(error) : false
   };

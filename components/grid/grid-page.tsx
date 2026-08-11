@@ -29,7 +29,7 @@ export function GridPage() {
   const { models, isLoading: isModelsLoading } = useModels(modelSearch, {
     benchmarkId
   });
-  const { rows, isLoading } = useGridData(config);
+  const { rows, modelNameById, isLoading } = useGridData(config);
 
   const [selectedLocation, setSelectedLocation] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [measuredAspects, setMeasuredAspects] = useState<Record<string, number>>({});
@@ -223,7 +223,12 @@ export function GridPage() {
                   <SearchableDropdown
                     options={modelOptions}
                     value={column.modelId ?? null}
-                    selectedLabel={column.label}
+                    selectedLabel={
+                      (column.modelId &&
+                        (modelNameById[column.modelId] ??
+                          modelsMap.get(column.modelId)?.label)) ||
+                      column.label
+                    }
                     searchValue={modelSearch}
                     onSearchChange={setModelSearch}
                     onSelect={(value) => {
