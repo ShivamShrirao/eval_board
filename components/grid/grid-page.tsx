@@ -120,7 +120,7 @@ export function GridPage() {
   const rowVirtualizer = useWindowVirtualizer({
     count: rows.length,
     estimateSize: () => 350,
-    overscan: 16,
+    overscan: 4,
     scrollMargin
   });
 

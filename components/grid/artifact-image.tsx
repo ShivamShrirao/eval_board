@@ -66,6 +66,8 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
       alt={alt ?? artifact.prompt ?? artifact.filename}
       className={className}
       style={style}
+      loading="lazy"
+      decoding="async"
       onClick={onClick}
       onLoad={handleLoad}
       onError={handleError}
