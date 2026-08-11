@@ -166,7 +166,9 @@ export async function fetchArtifactsForGrid({
 
   const columnCount = Math.max(selectedModelIds.length, 1);
   const effectiveTake = Math.max(take, 1);
-  const artifactTake = Math.min(effectiveTake * columnCount, 1000);
+  // Page size only — the client pages through `nextCursor` to load every row,
+  // so there is no overall row cap.
+  const artifactTake = effectiveTake * columnCount;
 
   const orderBy: Prisma.ImageArtifactOrderByWithRelationInput[] =
     config.sortBy === "createdAt"

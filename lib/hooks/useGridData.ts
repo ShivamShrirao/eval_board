@@ -10,20 +10,35 @@ interface GridResponse {
 }
 
 const fetcher = async ([, config]: [string, GridViewConfig]) => {
-  const res = await fetch("/api/images", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ config, take: 200 })
-  });
+  // Page through every artifact for the current selection so the grid shows
+  // complete coverage — no silent row cap. Each page is take*columns rows.
+  const items: ImageArtifactDTO[] = [];
+  let cursor: string | null = null;
 
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(`Failed to load grid data: ${detail}`);
+  for (let guard = 0; guard < 10_000; guard++) {
+    const res = await fetch("/api/images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ config, take: 200, cursor })
+    });
+
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(`Failed to load grid data: ${detail}`);
+    }
+
+    const page = (await res.json()) as GridResponse;
+    items.push(...page.items);
+
+    if (!page.nextCursor || page.nextCursor === cursor) {
+      break;
+    }
+    cursor = page.nextCursor;
   }
 
-  return (await res.json()) as GridResponse;
+  return { items, nextCursor: null };
 };
 
 export interface GridCell {
