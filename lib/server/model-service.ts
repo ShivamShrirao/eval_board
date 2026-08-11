@@ -214,7 +214,9 @@ function mapArtifactsToGridDTO(artifacts: ArtifactWithModel[]): Promise<ImageArt
   return Promise.all(artifacts.map(async (artifact) => {
     const metadata = (artifact.metadata as Record<string, unknown> | null) ?? null;
     const s3Location = artifact.sourceUrl ? resolveS3Location(artifact.sourceUrl, metadata) : null;
-    const cacheUrl = s3Location ? `/api/images/cache/${artifact.id}` : null;
+    const cacheUrl = s3Location
+      ? `/api/images/cache/${artifact.id}?v=${artifact.updatedAt.getTime()}`
+      : null;
     const sourceUrl =
       artifact.type === "image" && artifact.sourceUrl
         ? await resolveImageSourceUrl({
@@ -264,7 +266,9 @@ async function mapArtifactToDTO(artifact: ArtifactWithModel): Promise<ImageArtif
   ]);
 
   const s3Location = artifact.sourceUrl ? resolveS3Location(artifact.sourceUrl, metadata) : null;
-  const cacheUrl = s3Location ? `/api/images/cache/${artifact.id}` : null;
+  const cacheUrl = s3Location
+    ? `/api/images/cache/${artifact.id}?v=${artifact.updatedAt.getTime()}`
+    : null;
 
   return {
     id: artifact.id,
