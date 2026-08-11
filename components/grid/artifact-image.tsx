@@ -35,12 +35,18 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
   // every row it flies past, leaving S3's ~6 HTTP/1.1 connections free for the
   // rows you actually land on.
   const [shouldLoad, setShouldLoad] = useState(false);
+  // Reveal on load via an opacity flip. Setting a fresh src on an element
+  // inside the virtualizer's transformed (composited) row layer can leave the
+  // decoded image unpainted until a global repaint (e.g. a tab switch) — the
+  // opacity change forces the compositor to re-raster the layer immediately.
+  const [loaded, setLoaded] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
   if (trackedArtifactId !== artifact.id) {
     setTrackedArtifactId(artifact.id);
     setUseFallback(false);
     setShouldLoad(false);
+    setLoaded(false);
   }
 
   const resolvedSrc = useFallback && artifact.cacheUrl ? artifact.cacheUrl : artifact.sourceUrl;
@@ -83,6 +89,7 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
   }
 
   const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    setLoaded(true);
     const { naturalWidth, naturalHeight } = event.currentTarget;
     if (naturalWidth > 0 && naturalHeight > 0) {
       onNaturalSize?.(naturalWidth, naturalHeight);
@@ -106,8 +113,7 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
       src={shouldLoad ? resolvedSrc : undefined}
       alt={alt ?? artifact.prompt ?? artifact.filename}
       className={className}
-      style={style}
-      decoding="async"
+      style={{ ...style, opacity: loaded ? 1 : 0, transition: "opacity 150ms ease-out" }}
       onClick={onClick}
       onLoad={handleLoad}
       onError={handleError}
