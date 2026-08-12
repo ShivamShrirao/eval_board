@@ -199,7 +199,9 @@ export async function fetchArtifactsForGrid({
 
   return {
     items: await mapArtifactsToGridDTO(sliced),
-    nextCursor: hasNext ? artifacts[artifacts.length - 1].id : null
+    // Continue from the last row we actually kept, not the sliced-off peek row —
+    // otherwise the peek row is skipped on the next page and vanishes entirely.
+    nextCursor: hasNext ? sliced[sliced.length - 1].id : null
   };
 }
 
