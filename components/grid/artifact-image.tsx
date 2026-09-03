@@ -18,6 +18,29 @@ const warmCache = (artifactId: string) => {
   });
 };
 
+const dimensionSyncedIds = new Set<string>();
+
+// The browser's measured natural size is authoritative. If the stored
+// width/height are empty or wrong, correct them in the DB — once per session
+// per artifact, and only when they actually differ.
+const syncDimensions = (artifact: ImageArtifactDTO, width: number, height: number) => {
+  if (dimensionSyncedIds.has(artifact.id)) {
+    return;
+  }
+  if (artifact.width === width && artifact.height === height) {
+    return;
+  }
+  dimensionSyncedIds.add(artifact.id);
+  fetch(`/api/images/${artifact.id}/dimensions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ width, height }),
+    keepalive: true
+  }).catch(() => {
+    dimensionSyncedIds.delete(artifact.id);
+  });
+};
+
 interface ArtifactImageProps {
   artifact: ImageArtifactDTO;
   alt?: string;
@@ -46,6 +69,7 @@ export function ArtifactImage({ artifact, alt, className, style, onClick, onNatu
     const { naturalWidth, naturalHeight } = event.currentTarget;
     if (naturalWidth > 0 && naturalHeight > 0) {
       onNaturalSize?.(naturalWidth, naturalHeight);
+      syncDimensions(artifact, naturalWidth, naturalHeight);
     }
 
     if (!useFallback && artifact.cacheUrl) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { ImageArtifactDTO } from "../../lib/types";
 import { cn } from "../../lib/utils";
@@ -147,6 +147,29 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
   const prompt = formatPrompt(displayArtifact.prompt);
   const editInstruction = displayArtifact.editInstruction?.trim();
 
+  // Browser-measured pixel size of the shown image; preferred over the stored
+  // width/height so the sidebar reflects reality even before the DB self-heals.
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    setNaturalSize(null);
+  }, [displayArtifact.id]);
+  const displayWidth = naturalSize?.width ?? displayArtifact.width;
+  const displayHeight = naturalSize?.height ?? displayArtifact.height;
+
+  // Keep the image URL stable while the metadata fetch resolves. The detail
+  // response re-presigns sourceUrl with a fresh signature; swapping it in makes
+  // the browser treat an already-loaded image as a new resource and re-download
+  // it. Reuse the URL the grid already fetched, and take only text fields from
+  // the detail payload.
+  const imageArtifact = useMemo(
+    () => ({
+      ...displayArtifact,
+      sourceUrl: artifact.sourceUrl ?? displayArtifact.sourceUrl,
+      cacheUrl: artifact.cacheUrl ?? displayArtifact.cacheUrl
+    }),
+    [displayArtifact, artifact.sourceUrl, artifact.cacheUrl]
+  );
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -247,9 +270,10 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
             </div>
           ) : (
             <ArtifactImage
-              artifact={displayArtifact}
+              artifact={imageArtifact}
               className="absolute inset-0 h-full w-full object-contain shadow-2xl shadow-black/50"
               onClick={(e) => e.stopPropagation()}
+              onNaturalSize={(width, height) => setNaturalSize({ width, height })}
             />
           )}
         </div>
@@ -279,10 +303,10 @@ export function ImageDetailView({ artifact, onClose, onNavigate }: ImageDetailVi
                   )}
                   <span className="text-slate-600 text-xs">Type</span>
                   <span className="capitalize">{displayArtifact.type}</span>
-                  {displayArtifact.width && displayArtifact.height && (
+                  {displayWidth && displayHeight && (
                     <>
                       <span className="text-slate-600 text-xs">Dimensions</span>
-                      <span>{displayArtifact.width} x {displayArtifact.height}</span>
+                      <span>{displayWidth} x {displayHeight}</span>
                     </>
                   )}
                   <span className="text-slate-600 text-xs">Created</span>
